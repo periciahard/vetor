@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 180" role="img" aria-label="VETOR">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0f2e5f"/><stop offset="1" stop-color="#2e8b57"/></linearGradient></defs>
+<rect width="640" height="180" rx="28" fill="white"/>
+<g transform="translate(32 32)">
+<circle cx="8" cy="104" r="8" fill="#2e8b57"/><circle cx="46" cy="78" r="7" fill="#2e8b57" opacity=".85"/><circle cx="84" cy="52" r="6" fill="#0f2e5f" opacity=".85"/>
+<path d="M10 104 L78 18 L124 104 L176 36" fill="none" stroke="url(#g)" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M176 36 L164 36 L176 18 L188 36 Z" fill="#2e8b57" transform="rotate(35 176 30)"/>
+</g>
+<text x="240" y="82" font-family="Arial, Helvetica, sans-serif" font-size="54" font-weight="800" fill="#0f2e5f">VETOR</text>
+<text x="242" y="122" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#2e8b57">Transformando avaliações em direção pedagógica.</text>
+</svg>

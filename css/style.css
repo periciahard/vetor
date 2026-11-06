@@ -2405,3 +2405,25 @@ body.dark-theme .password-form label{color:#eef4ff}body.dark-theme .checkbox-lin
 #importar .panel:has(#assessmentHistory) .assessment-history{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
 @media(max-width:1100px){#importar.active{grid-template-columns:1fr}.new-analysis-summary{grid-column:1;grid-row:auto}.analysis-stepper{grid-template-columns:1fr 1fr}.analysis-stepper .step:after{display:none}#importar .modelbox .grid2{grid-template-columns:1fr 1fr}.na-metrics{grid-template-columns:1fr 1fr}}
 @media(max-width:650px){.new-analysis-header{display:block}.new-analysis-profile{margin-top:12px}.analysis-stepper,#importar .modelbox .grid2,.na-metrics{grid-template-columns:1fr}#importar .modelbox .grid2 label:nth-child(5),#importar .modelbox .grid2 label:nth-child(7){grid-column:auto}}
+
+/* Assessment names remain readable in the comparison selector. */
+.compare-assessment-chip.compare-assessment-readable{
+ display:grid!important;grid-template-columns:18px minmax(0,1fr)!important;
+ align-items:start!important;gap:10px!important;padding:12px!important;border-radius:8px!important;
+ width:100%;height:auto!important;min-width:0;
+}
+.compare-assessment-chip.compare-assessment-readable input{
+ grid-row:auto!important;width:16px!important;height:16px!important;margin:3px 0 0!important;
+}
+.compare-assessment-chip.compare-assessment-readable .compare-assessment-copy{
+ display:grid!important;gap:4px;min-width:0;white-space:normal!important;
+ overflow:visible!important;text-overflow:clip!important;
+}
+.compare-assessment-chip.compare-assessment-readable .compare-assessment-title,
+.compare-assessment-chip.compare-assessment-readable .compare-assessment-class{
+ display:block!important;white-space:normal!important;overflow:visible!important;
+ text-overflow:clip!important;overflow-wrap:anywhere;line-height:1.4;letter-spacing:0;
+}
+.compare-assessment-chip.compare-assessment-readable .compare-assessment-title{font-size:14px;font-weight:800}
+.compare-assessment-chip.compare-assessment-readable .compare-assessment-class{font-size:12px;font-weight:600}
+.compare-assessment-chip.compare-assessment-readable .compare-assessment-count{font-size:11px;line-height:1.3}

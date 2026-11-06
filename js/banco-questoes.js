@@ -13,9 +13,10 @@
  function localQuestion(descCode,i,disc){return {id:'local-'+descCode+'-'+i,discipline:disc,descriptor:descCode,difficulty:'Média',key:'C',source:'Modelo interno',bncc:'',time:3,textBase:'Texto ou situação-problema gerado para teste.',enunciado:`Questão ${i+1}. Resolva uma situação relacionada ao descritor ${descCode} e assinale a alternativa correta.`,alts:['A) Alternativa incorreta.','B) Alternativa parcialmente correta.','C) Alternativa correta.','D) Alternativa com erro comum.','E) Alternativa incompatível.']};}
  function builtIn(){
   const out=[];
-  const cfg={'Língua Portuguesa':21,'Matemática':35};
-  Object.entries(cfg).forEach(([disc,max])=>{
-   for(let n=1;n<=max;n++){
+  const cfg={'Língua Portuguesa':window.Descritores.list('Língua Portuguesa'),'Matemática':window.Descritores.list('Matemática')};
+  Object.entries(cfg).forEach(([disc,matrix])=>{
+   for(const entry of matrix){
+    const n=Number(entry.codigo.slice(1));
     for(let j=0;j<10;j++){
      const descriptor='D'+n, difficulty=j<4?'Fácil':j<8?'Média':'Difícil', key=letras[(n+j)%5];
      const tema=(examples[disc]||[])[(n+j)%(examples[disc]||['contexto escolar']).length]||'contexto escolar';
@@ -32,7 +33,7 @@
   const q={}; const get=(...keys)=>{for(const k of keys){if(raw[k]!=null&&norm(raw[k])!=='')return raw[k]; const found=Object.keys(raw).find(x=>x.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')===k.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')); if(found&&norm(raw[found])!=='')return raw[found];} return '';};
   q.id=norm(get('ID','Id','id'))||uid();
   q.discipline=norm(get('Disciplina','discipline','Materia','Componente'))||'Língua Portuguesa';
-  q.descriptor=desc(get('Descritor','descriptor','D'))||'D1';
+  q.descriptor=desc(get('Descritor','descriptor','D'))||(window.Descritores.list(q.discipline)[0]?.codigo||'');
   q.difficulty=norm(get('Nivel','Nível','Dificuldade','difficulty'))||'Média';
   q.key=(norm(get('Gabarito','Resposta','key')).toUpperCase().match(/[A-E]/)||['C'])[0];
   q.source=norm(get('Fonte','source'))||'Importado';

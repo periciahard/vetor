@@ -477,19 +477,29 @@ function sameApplication(a,b){
   const series=[['1','1º ano'],['2','2º ano'],['3','3º ano']];
   const renderItem=x=>{
    const checked=compareSelectedIds.includes(x.id);
-   const title=groupedAssessmentTitle(x);
-   return `<label class="compare-assessment-chip compare-assessment-readable ${checked?'selected':''}"><input type="checkbox" value="${A().safe(x.id)}" ${checked?'checked':''}/><span class="compare-assessment-copy"><b class="compare-assessment-title">${A().safe(title)}</b><span class="compare-assessment-class">${A().safe(A().cleanTurmaName?.(x.turma)||x.turma||'Turma não informada')}</span><small class="compare-assessment-count">${(x.students||[]).length} alunos</small></span></label>`;
+   return `<label class="compare-assessment-chip compare-assessment-readable ${checked?'selected':''}"><input type="checkbox" value="${A().safe(x.id)}" ${checked?'checked':''}/><span class="compare-assessment-copy"><b class="compare-assessment-title">${A().safe(A().cleanTurmaName?.(x.turma)||x.turma||'Turma não informada')}</b><small class="compare-assessment-count">${(x.students||[]).length} alunos</small></span></label>`;
+  };
+  const renderGroups=items=>{
+   const groups=new Map();
+   items.forEach(item=>{
+    const title=groupedAssessmentTitle(item);
+    const key=title.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
+    if(!groups.has(key))groups.set(key,{title,items:[]});
+    groups.get(key).items.push(item);
+   });
+   return [...groups.values()].sort((a,b)=>a.title.localeCompare(b.title,'pt-BR',{numeric:true}))
+    .map(group=>`<section class="compare-assessment-group"><h5 class="compare-assessment-group-heading"><span>${A().safe(group.title)}</span><small>${group.items.length} ${group.items.length===1?'avaliação':'avaliações'}</small></h5><div class="compare-assessment-group-items">${group.items.map(renderItem).join('')}</div></section>`).join('');
   };
   const cols=series.map(([key,label])=>{
     const inSerie=sortAssessmentList(choices.filter(x=>assessmentSerie(x)===key));
     const rows=['Língua Portuguesa','Matemática'].map(disc=>{
       const items=inSerie.filter(x=>assessmentDisc(x)===disc);
-      return `<div class="compare-disc-row"><div class="compare-disc-title">${A().safe(disc)}</div><div class="compare-disc-items">${items.length?items.map(renderItem).join(''):'<span class="compare-empty">Sem avaliações</span>'}</div></div>`;
+      return `<div class="compare-disc-row"><div class="compare-disc-title">${A().safe(disc)}</div><div class="compare-disc-items">${items.length?renderGroups(items):'<span class="compare-empty">Sem avaliações</span>'}</div></div>`;
     }).join('');
     return `<section class="compare-serie-col"><h4>${label}</h4>${rows}</section>`;
   }).join('');
   const other=choices.filter(x=>assessmentSerie(x)==='outros');
-  optionsBox.innerHTML=`<div class="compare-series-grid">${cols}</div>${other.length?`<div class="compare-other-row"><h4>Outras avaliações</h4>${other.map(renderItem).join('')}</div>`:''}`;
+  optionsBox.innerHTML=`<div class="compare-series-grid">${cols}</div>${other.length?`<div class="compare-other-row"><h4>Outras avaliações</h4>${renderGroups(other)}</div>`:''}`;
   optionsBox.querySelectorAll('input[type="checkbox"]').forEach(cb=>{
     cb.onchange=()=>{
       if(cb.checked){

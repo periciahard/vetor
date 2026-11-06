@@ -83,7 +83,7 @@ function levelBadge(level){
  function engineLabel(engine){return CALC_ENGINES[engine||calcEngine()]?.label||CALC_ENGINES.linear.label;}
  function normKey(v){return String(v||'').trim().toLowerCase();}
  function questionSignature(a){
-  return JSON.stringify({q:(a.questions||[]).map(normKey),k:(a.key||[]).map(x=>A().letter(x)),d:(a.descriptors||[]).map(normKey)});
+  return JSON.stringify({matrix:a.descriptorMatrix||'saepe',q:(a.questions||[]).map(normKey),k:(a.key||[]).map(x=>A().letter(x)),d:(a.descriptors||[]).map(normKey)});
  }
  function seriesKey(a){
   const turma=normKey(a?.turma||a?.className||'');
@@ -297,7 +297,7 @@ function sameApplication(a,b){
  function assessmentSignature(a){
   if(!a)return '';
   return [
-   a.id||'',a.updatedAt||'',a.createdAt||'',a.turma||'',a.discipline||'',a.tipo||'',a.date||'',
+   a.descriptorMatrix||'saepe',a.id||'',a.updatedAt||'',a.createdAt||'',a.turma||'',a.discipline||'',a.tipo||'',a.date||'',
    (a.questions||[]).join('|'),(a.descriptors||[]).join('|'),(a.key||[]).map(x=>A().letter(x)).join(''),
    (a.students||[]).length,(a.students||[]).map(studentSignature).join('~')
   ].join('§');

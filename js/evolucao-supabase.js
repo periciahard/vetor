@@ -76,7 +76,8 @@
   }
   function normalizeAssessment(av,rows){
     const key=Array.isArray(av.gabarito_json)?av.gabarito_json:[];
-    const descriptors=Array.isArray(av.descritores_json)?av.descritores_json:[];
+    const descriptorMatrix=av.descritores_json?.matrix||'saepe';
+    const descriptors=Array.isArray(av.descritores_json)?av.descritores_json:(av.descritores_json?.codes||[]);
     const nQ=key.length || Number(rows[0]?.total)||0;
     const students=(rows||[]).map(r=>{
       const ans=Array.isArray(r.respostas_json)?r.respostas_json:[];
@@ -89,7 +90,7 @@
     const avg=students.length?Math.round((students.reduce((s,x)=>s+(Number(x.percent)||0),0)/students.length)*10)/10:0;
     const levels={}; students.forEach(s=>levels[s.level]=(levels[s.level]||0)+1);
     const descriptorStats=computeDescriptorStats(students,key,descriptors);
-    return {id:av.id, title:av.titulo||av.nome||'Avaliação', nome:av.nome, tipo:av.tipo||'diagnostica', date:av.data_avaliacao||av.data_aplicacao||'', discipline:normDisc(av.disciplina), disciplina_db:av.disciplina, turma:av.turmas?.nome||'Turma não informada', turma_id:av.turma_id, createdAt:av.criado_em, questions:av.questoes_json||[], descriptors, key, students, summary:{nStudents:students.length,nQuestions:nQ,avg,levels}, descriptorStats};
+    return {id:av.id, title:av.titulo||av.nome||'Avaliação', nome:av.nome, tipo:av.tipo||'diagnostica', date:av.data_avaliacao||av.data_aplicacao||'', discipline:normDisc(av.disciplina), disciplina_db:av.disciplina, turma:av.turmas?.nome||'Turma não informada', turma_id:av.turma_id, createdAt:av.criado_em, questions:av.questoes_json||[], descriptorMatrix, descriptors, key, students, summary:{nStudents:students.length,nQuestions:nQ,avg,levels}, descriptorStats};
   }
   function computeDescriptorStats(students,key,descriptors){
     const map={};

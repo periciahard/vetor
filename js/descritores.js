@@ -284,7 +284,26 @@
   }
 ].map(d=>({...d,erros:comum.erros,estrategias:comum.estrategias,intervencao:comum.estrategias}));
  function matrixKey(matrix){return matrix||window.VETOR?.state?.assessment?.descriptorMatrix||'saepe';}
- function matrixList(disc,matrix){return disciplineKey(disc)==='Língua Portuguesa'&&matrixKey(matrix)==='saeb'?saebLP:(data[disciplineKey(disc)]||[]);}
+ function matrixList(disc,matrix){
+  const base=data[disciplineKey(disc)]||[];
+  if(disciplineKey(disc)!=='Língua Portuguesa')return base;
+  const selected=matrixKey(matrix);
+  if(selected==='saeb')return saebLP;
+  if(selected!=='mista')return base;
+  const codes=[...new Set([...base,...saebLP].map(d=>d.codigo))];
+  return codes.map(codigo=>{
+   const saepe=base.find(d=>d.codigo===codigo), saeb=saebLP.find(d=>d.codigo===codigo);
+   if(!saepe||!saeb)return {...(saepe||saeb),matriz:saepe?'saepe':'saeb',
+    texto:(saepe?'SAEPE: ':'SAEB: ')+(saepe||saeb).texto};
+   return {...saepe,matriz:'mista',ambiguo:true,
+    texto:'SAEPE: '+saepe.texto+' | SAEB: '+saeb.texto,
+    topico:'Referências SAEPE e SAEB',
+    explicacao:'Código compartilhado: confirme a habilidade avaliada na questão. SAEPE: '+saepe.texto+' | SAEB: '+saeb.texto,
+    fonte:saepe.fonte+'; '+saeb.fonte,
+    estrategias:'Confirme a origem deste código na questão antes de definir a intervenção pedagógica.',
+    intervencao:'Confirme a origem deste código na questão antes de definir a intervenção pedagógica.'};
+  }).sort((a,b)=>Number(a.codigo.slice(1))-Number(b.codigo.slice(1)));
+ }
  window.Descritores={
   list(disc,matrix){if(disc==='todos')return [...matrixList('Língua Portuguesa',matrix),...data['Matemática']];return matrixList(disc,matrix);},
   get(disc,codigo,matrix){return matrixList(disc,matrix).find(d=>d.codigo===codeKey(codigo));},

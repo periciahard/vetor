@@ -471,6 +471,50 @@
       if(saved>1)this.setStatus(saved+' diagnosticos salvos na nuvem com sucesso.','ok');
       return saved;
     },
+    async syncAssessmentsToApp(){
+      const app=A(), profile=this.profile, client=this.client;
+      if(!app||!profile)return 0;
+      const records=[];
+      for(const av of this.assessments){
+        if(!av.questoes_json?.length)continue;
+        const linked=(app.state.assessments||[]).find(x=>x.cloud_avaliacao_id===av.id||x.id==='cloud-'+av.id);
+        if(linked?.questions?.length&&linked?.students?.length)continue;
+        const students=[];
+        for(let offset=0;;offset+=500){
+          const {data,error}=await client.from('resultados_alunos')
+            .select('id,aluno_nome,respostas_json').eq('avaliacao_id',av.id)
+            .order('id').range(offset,offset+499);
+          if(error)throw new Error('Não foi possível recuperar '+(av.titulo||av.nome||av.id)+': '+error.message);
+          for(const row of data||[]){
+            if(!this.isPlaceholderStudentName(row.aluno_nome))students.push({name:row.aluno_nome,answers:Array.isArray(row.respostas_json)?row.respostas_json:[]});
+          }
+          if((data||[]).length<500)break;
+        }
+        if(!students.length)continue;
+        const record={id:linked?.id||'cloud-'+av.id,cloud_avaliacao_id:av.id,
+          title:av.titulo||av.nome||'Avaliação',turma:av.turmas?.nome||'',
+          discipline:this.dbDiscToUi(av.disciplina),tipo:av.tipo||'diagnostica',
+          customType:linked?.customType||'',date:av.data_avaliacao||av.data_aplicacao||'',
+          teacher:av.professor?.nome||'',questions:av.questoes_json,
+          questionCount:av.questoes_json.length,descriptors:av.descritores_json||[],
+          key:av.gabarito_json||[],students,multiTurmas:1,turmas:[av.turmas?.nome||''],
+          createdAt:av.criado_em,updatedAt:av.criado_em,cloud_saved_at:new Date().toISOString()};
+        record.savedSignature=app.metaSignature(record);
+        records.push(record);
+      }
+      if(this.profile!==profile||this.client!==client)return 0;
+      // Merge only after all reads succeed, without changing an assessment being edited.
+      for(const record of records){
+        const index=(app.state.assessments||[]).findIndex(x=>x.id===record.id||x.cloud_avaliacao_id===record.cloud_avaliacao_id);
+        if(index>=0){
+          const existing=app.state.assessments[index];
+          if(existing.questions?.length&&existing.students?.length)continue;
+          app.state.assessments[index]=record;
+        }else app.state.assessments.push(record);
+      }
+      if(records.length){app.save();app.renderAll();window.Estabilidade?.renderMinhasTurmas?.();}
+      return records.length;
+    },
     async listAssessments(showStatus=true){
       if(!this.profile){if(showStatus)this.setStatus('Faça login para listar avaliações.','error');return;}
       if(showStatus)this.setStatus('Carregando avaliações...', 'work');
@@ -488,7 +532,9 @@
         }catch(e){console.warn('Não foi possível carregar nomes dos professores:', e.message);}
       }
       this.assessments=rows.map(av=>({...av, professor: profMap[av.professor_id]||null}));
-      this.renderAssessments(); this.renderCoordCloudDashboard(); if(showStatus)this.setStatus(`${this.assessments.length} avaliação(ões) carregada(s).`,'ok');
+      this.renderAssessments(); this.renderCoordCloudDashboard();
+      try{await this.syncAssessmentsToApp();}catch(e){this.setStatus(e.message,'error');return;}
+      if(showStatus)this.setStatus(`${this.assessments.length} avaliação(ões) carregada(s).`,'ok');
     },
     renderAssessments(){
       const box=document.querySelector('#cloudAssessmentsList'); if(!box)return;

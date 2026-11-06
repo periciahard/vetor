@@ -295,7 +295,7 @@
         data_aplicacao:data_avaliacao,
         data_avaliacao,
         questoes_json:a.questions,
-        descritores_json:a.descriptors,
+        descritores_json:a.descriptorMatrix==='saeb'?{version:1,matrix:'saeb',codes:a.descriptors}:a.descriptors,
         gabarito_json:a.key
       };
 
@@ -496,7 +496,7 @@
           discipline:this.dbDiscToUi(av.disciplina),tipo:av.tipo||'diagnostica',
           customType:linked?.customType||'',date:av.data_avaliacao||av.data_aplicacao||'',
           teacher:av.professor?.nome||'',questions:av.questoes_json,
-          questionCount:av.questoes_json.length,descriptors:av.descritores_json||[],
+          questionCount:av.questoes_json.length,descriptorMatrix:av.descritores_json?.matrix||'saepe',descriptors:Array.isArray(av.descritores_json)?av.descritores_json:(av.descritores_json?.codes||[]),
           key:av.gabarito_json||[],students,multiTurmas:1,turmas:[av.turmas?.nome||''],
           createdAt:av.criado_em,updatedAt:av.criado_em,cloud_saved_at:new Date().toISOString()};
         record.savedSignature=app.metaSignature(record);
@@ -556,7 +556,7 @@
       const {data:rows,error}=await this.client.from('resultados_alunos').select('*').eq('avaliacao_id',id).order('aluno_nome');
       if(error){this.setStatus('Erro ao carregar resultados: '+error.message,'error');return;}
       const questions=av.questoes_json||[];
-      A().setAssessment({id:'cloud-'+av.id,cloud_avaliacao_id:av.id,title:av.titulo||av.nome,turma:av.turmas?.nome||'',tipo:av.tipo||'diagnostica',date:av.data_avaliacao||av.data_aplicacao||'',discipline:this.dbDiscToUi(av.disciplina),questionCount:questions.length||26,questions,descriptors:av.descritores_json||[],key:av.gabarito_json||[],students:(rows||[]).filter(r=>!this.isPlaceholderStudentName(r.aluno_nome)).map(r=>({name:r.aluno_nome,answers:r.respostas_json||[]}))});
+      A().setAssessment({id:'cloud-'+av.id,cloud_avaliacao_id:av.id,title:av.titulo||av.nome,turma:av.turmas?.nome||'',tipo:av.tipo||'diagnostica',date:av.data_avaliacao||av.data_aplicacao||'',discipline:this.dbDiscToUi(av.disciplina),questionCount:questions.length||26,questions,descriptorMatrix:av.descritores_json?.matrix||'saepe',descriptors:Array.isArray(av.descritores_json)?av.descritores_json:(av.descritores_json?.codes||[]),key:av.gabarito_json||[],students:(rows||[]).filter(r=>!this.isPlaceholderStudentName(r.aluno_nome)).map(r=>({name:r.aluno_nome,answers:r.respostas_json||[]}))});
       A().fillMetaInputs?.(); this.selectedCloudAssessment=av;
       this.setStatus('Avaliação carregada da nuvem.','ok'); A().showView('diagnostico');
     }

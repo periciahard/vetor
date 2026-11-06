@@ -64,9 +64,16 @@
  ];
  function build(arr,disc){return arr.map(([codigo,topico,texto,explicacao])=>({codigo,disciplina:disc,topico,texto,explicacao,bncc:'',erros:comum.erros,estrategias:comum.estrategias,intervencao:comum.estrategias,fonte:'SAEPE - Matriz de Referência da 3ª série do Ensino Médio'}));}
  const data={'Língua Portuguesa':build(lp,'Língua Portuguesa'),'Matemática':build(mat,'Matemática')};
+ function disciplineKey(disc){
+  const key=String(disc||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
+  if(['portugues','lingua portuguesa','lp'].includes(key))return 'Língua Portuguesa';
+  if(['matematica','mat','mt'].includes(key))return 'Matemática';
+  return '';
+ }
+ function codeKey(code){const m=String(code||'').trim().match(/^D\s*0*(\d+)$/i);return m?'D'+Number(m[1]):'';}
  window.Descritores={
-  list(disc){if(disc==='todos')return [...data['Língua Portuguesa'],...data['Matemática']];return data[disc]||data['Língua Portuguesa'];},
-  get(disc,codigo){return (data[disc]||[]).find(d=>d.codigo===codigo);},
-  validCodes(disc){return new Set((data[disc]||[]).map(d=>d.codigo));}
+  list(disc){if(disc==='todos')return [...data['Língua Portuguesa'],...data['Matemática']];return data[disciplineKey(disc)]||[];},
+  get(disc,codigo){return (data[disciplineKey(disc)]||[]).find(d=>d.codigo===codeKey(codigo));},
+  validCodes(disc){return new Set((data[disciplineKey(disc)]||[]).map(d=>d.codigo));}
  };
 })();

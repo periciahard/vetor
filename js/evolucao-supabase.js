@@ -170,6 +170,7 @@
   }
   function renderCloud(){
     ensureControls(); renderSelects(); renderTimeline(); directCompare(); renderClassCompare(); renderStudent(); renderDescriptor();
+    window.InteligenciaV684?.renderEvo?.();
     if(state.loaded){const n=filtered().length; setStatus(n?`✅ ${n} avaliação(ões) da nuvem disponível(is) para histórico e evolução.`:'Histórico da nuvem carregado, mas sem avaliações para os filtros selecionados.', n?'ok':'work');}
   }
   function renderCoordCloudEvolution(){

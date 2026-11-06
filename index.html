@@ -202,7 +202,7 @@
 <div class="step"><b>5</b><span>Análise<small>Gerar resultados</small></span></div>
 </div>
 <div id="newAnalysisSummary" class="new-analysis-summary"></div>
-<div class="panel modelbox"><h3>1. Identificação da avaliação</h3><p class="hint">Preencha uma vez os dados comuns, marque as turmas que fizeram a avaliação e faça o upload da planilha de cada turma.</p><div class="grid2"><label>Título da avaliação *<input id="assessmentTitle" placeholder="Ex.: Simulado 3, VETOR 1, Revisão"/></label><label class="assessment-class-select-wrap">Turma *<select id="assessmentClass"><option value="">Selecione a turma</option><option value="__varias_turmas__">Várias turmas</option></select></label><div class="assessment-class-multi" id="assessmentClassMulti"><b>Turmas *</b><span class="hint">Marque uma ou mais turmas. Se marcar mais de uma, o VETOR abre um upload separado para cada turma.</span><div id="assessmentClassChecks" class="assessment-class-checks"></div></div><label>Disciplina *<select id="assessmentDiscipline"><option value="Língua Portuguesa">Língua Portuguesa</option><option value="Matemática">Matemática</option></select></label><label>Tipo *<select id="assessmentType"><option value="diagnostica">Diagnóstica</option><option value="simulado">Simulado</option><option value="recuperacao">Recuperação</option><option value="avaliacao">Avaliação</option><option value="personalizada">Personalizada</option></select></label><label class="custom-type-field" id="customTypeWrap">Tipo personalizado *<input id="assessmentTypeCustom" placeholder="Ex.: Prova de nivelamento"/></label><label>Data da avaliação *<input id="assessmentDate" type="date"/></label><label>Quantidade de questões *<input id="assessmentQuestionCount" max="100" min="1" type="number" value="26"/></label><label>Professor responsável<select id="assessmentTeacher"><option value="">Selecione o professor</option></select></label></div><div class="statusbox status-work" id="assessmentSaveStatus">Nenhuma avaliação ativa. Salve a avaliação para liberar a importação.</div><div class="actions"><button id="saveAssessmentMeta">Salvar avaliação</button><button class="secondary" id="newAssessment">Nova avaliação</button></div></div>
+<div class="panel modelbox"><h3>1. Identificação da avaliação</h3><p class="hint">Preencha uma vez os dados comuns, marque as turmas que fizeram a avaliação e faça o upload da planilha de cada turma.</p><div class="grid2"><label>Título da avaliação *<input id="assessmentTitle" placeholder="Ex.: Simulado 3, VETOR 1, Revisão"/></label><label class="assessment-class-select-wrap">Turma *<select id="assessmentClass"><option value="">Selecione a turma</option><option value="__varias_turmas__">Várias turmas</option></select></label><div class="assessment-class-multi" id="assessmentClassMulti"><b>Turmas *</b><span class="hint">Marque uma ou mais turmas. Se marcar mais de uma, o VETOR abre um upload separado para cada turma.</span><div id="assessmentClassChecks" class="assessment-class-checks"></div></div><label>Disciplina *<select id="assessmentDiscipline"><option value="Língua Portuguesa">Língua Portuguesa</option><option value="Matemática">Matemática</option></select></label><label>Matriz de descritores<select id="assessmentMatrix"><option value="saepe">SAEPE — Ensino Médio</option><option value="saeb">SAEB — Língua Portuguesa / Ensino Médio</option></select></label><label>Tipo *<select id="assessmentType"><option value="diagnostica">Diagnóstica</option><option value="simulado">Simulado</option><option value="recuperacao">Recuperação</option><option value="avaliacao">Avaliação</option><option value="personalizada">Personalizada</option></select></label><label class="custom-type-field" id="customTypeWrap">Tipo personalizado *<input id="assessmentTypeCustom" placeholder="Ex.: Prova de nivelamento"/></label><label>Data da avaliação *<input id="assessmentDate" type="date"/></label><label>Quantidade de questões *<input id="assessmentQuestionCount" max="100" min="1" type="number" value="26"/></label><label>Professor responsável<select id="assessmentTeacher"><option value="">Selecione o professor</option></select></label></div><div class="statusbox status-work" id="assessmentSaveStatus">Nenhuma avaliação ativa. Salve a avaliação para liberar a importação.</div><div class="actions"><button id="saveAssessmentMeta">Salvar avaliação</button><button class="secondary" id="newAssessment">Nova avaliação</button></div></div>
 <div class="panel activeAssessmentPanel"><h3>Avaliação atual</h3><div class="statusbox status-work" id="activeAssessmentBox">Nenhuma avaliação salva selecionada.</div></div>
 <div class="panel"><h3>Histórico de avaliações</h3><p class="hint">Abra avaliações já salvas. O histórico preserva diagnósticas, simulados e recuperações já importadas.</p><div class="assessment-history" id="assessmentHistory"></div></div>
 <div class="panel validationGate"><h3>Conferência obrigatória</h3><p class="hint">Depois de ler ou digitar os dados, o sistema precisa confirmar se encontrou questões, descritores, gabarito e alunos.</p><div class="statusbox status-work" id="importGate">Aguardando importação ou validação.</div><div class="actions"><button class="secondary" id="validateDataGate">1. Validar estrutura</button><button disabled="" id="confirmImport">2. Confirmar e analisar</button></div></div>
@@ -610,11 +610,11 @@ E) ..."></textarea></div><div class="actions"><button id="addBankQuestion">Adici
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
-<script src="js/app.js?v=68-7-49-matriz-saepe"></script>
-<script src="js/descritores.js?v=68-7-49-matriz-saepe"></script>
+<script src="js/app.js?v=68-7-51-matriz-saeb"></script>
+<script src="js/descritores.js?v=68-7-51-matriz-saeb"></script>
 <script src="js/turmas.js?v=68-7-45-turmas-sem-alunos-misturados"></script>
-<script src="js/importacao.js?v=68-7-48-validacao-lote"></script>
-<script src="js/diagnostico.js?v=68-7-43-blocos-analise-funcionais"></script>
+<script src="js/importacao.js?v=68-7-51-matriz-saeb"></script>
+<script src="js/diagnostico.js?v=68-7-51-matriz-saeb"></script>
 <script src="js/evolucao.js?v=68-7"></script>
 <script src="js/relatorios.js?v=68-7"></script>
 <script src="js/exportacao.js?v=68-7"></script>
@@ -622,7 +622,7 @@ E) ..."></textarea></div><div class="actions"><button id="addBankQuestion">Adici
 <script src="js/fichas.js?v=68-7"></script>
 <script src="js/intervencoes.js?v=68-7"></script>
 <script src="js/impressao.js?v=68-7"></script>
-<script src="js/supabase-sync.js?v=68-7-50-recuperar-avaliacoes"></script>
+<script src="js/supabase-sync.js?v=68-7-51-matriz-saeb"></script>
 <script src="js/pedagogico-avancado.js?v=68-7-43-blocos-analise-funcionais"></script>
 <script src="js/sistema.js?v=68-7"></script>
 <script src="js/correcoes.js?v=68-7-42-remover-alunos-placeholder"></script>
@@ -633,7 +633,7 @@ E) ..."></textarea></div><div class="actions"><button id="addBankQuestion">Adici
 <script src="js/institucional.js?v=68-7"></script>
 <script src="js/auth-supabase.js?v=68-7-25-modo-varias-turmas"></script>
 <script src="js/estabilidade.js?v=68-7-44-minhas-turmas-canonicas"></script>
-<script src="js/evolucao-supabase.js?v=68-7"></script>
+<script src="js/evolucao-supabase.js?v=68-7-51-matriz-saeb"></script>
 <script src="js/inteligencia.js?v=68-7"></script>
 <script src="js/exportacao-visual.js?v=68-8"></script>
 <script id="vetor-ux-v68-2">

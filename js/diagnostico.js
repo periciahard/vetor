@@ -408,6 +408,15 @@ function sameApplication(a,b){
   const title=String(a.title||'').trim()||label;
   return `${a.turma||'Turma?'} • ${a.discipline||'Disciplina?'} • ${title}`;
  }
+ function groupedAssessmentTitle(a){
+  const title=String(a?.title||'').trim()||A().assessmentTypeLabel?.(a)||'Avaliação';
+  return title.replace(/(?:Língua Portuguesa|Lingua Portuguesa|Português|Portugues|Matemática|Matematica)/gi,'')
+    .replace(/^[\s•|–—-]+|[\s•|–—-]+$/g,'').replace(/\s{2,}/g,' ').trim()||'Avaliação';
+ }
+ function groupedAssessmentName(a){
+  const turma=A().cleanTurmaName?.(a.turma)||a.turma||'Turma não informada';
+  return turma+' • '+groupedAssessmentTitle(a);
+ }
  function validSavedAssessments(){
   const list=(A().state.assessments||[]).filter(x=>(x.students||[]).length && (x.questions||[]).length);
   const cur=A().state.assessment;
@@ -468,7 +477,7 @@ function sameApplication(a,b){
   const series=[['1','1º ano'],['2','2º ano'],['3','3º ano']];
   const renderItem=x=>{
    const checked=compareSelectedIds.includes(x.id);
-   const title=String(x.title||'').trim()||A().assessmentTypeLabel?.(x)||'Avaliação';
+   const title=groupedAssessmentTitle(x);
    return `<label class="compare-assessment-chip compare-assessment-readable ${checked?'selected':''}"><input type="checkbox" value="${A().safe(x.id)}" ${checked?'checked':''}/><span class="compare-assessment-copy"><b class="compare-assessment-title">${A().safe(title)}</b><span class="compare-assessment-class">${A().safe(A().cleanTurmaName?.(x.turma)||x.turma||'Turma não informada')}</span><small class="compare-assessment-count">${(x.students||[]).length} alunos</small></span></label>`;
   };
   const cols=series.map(([key,label])=>{
@@ -748,7 +757,7 @@ function renderStudentAssessmentChooser(){
  const series=[['1','1º ano'],['2','2º ano'],['3','3º ano']];
  const renderItem=x=>{
   const selected=x.id===active;
-  return `<button type="button" class="student-assessment-chip ${selected?'selected':''}" data-student-assessment="${A().safe(x.id)}"><span>${A().safe(assessmentName(x))}</span><small>${(x.students||[]).length} alunos</small></button>`;
+  return `<button type="button" class="student-assessment-chip ${selected?'selected':''}" data-student-assessment="${A().safe(x.id)}"><span>${A().safe(groupedAssessmentName(x))}</span><small>${(x.students||[]).length} alunos</small></button>`;
  };
  const cols=series.map(([key,label])=>{
   const inSerie=sortAssessmentList(list.filter(x=>assessmentSerie(x)===key));

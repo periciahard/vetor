@@ -81,17 +81,29 @@
       try{const {error}=await this.client.from('perfis').select('id').limit(1); if(error)throw error; this.setStatus('Conexão com Supabase funcionando.','ok');}
       catch(e){this.setStatus('Falha no teste: '+this.friendlyError(e),'error');}
     },
+    invalidateIdentity(){
+      this.identityGeneration=(this.identityGeneration||0)+1;
+      this.identityVerified=false;this.profile=null;this.session=null;
+      this.turmas=[];this.assessments=[];this.teacherProfiles=[];
+      document.dispatchEvent(new Event('vetor:auth-invalid'));
+    },
     async restoreSession(){
+      const generation=this.identityGeneration||0;
       if(!this.client&&!this.initClient())return;
-      try{const {data}=await this.client.auth.getSession(); this.session=data.session||null; if(this.session) await this.loadCloudContext(); else this.setStatus('Supabase configurado. Faça login institucional para sincronizar.','work');}
+      try{const {data}=await this.client.auth.getSession(); if(generation!==(this.identityGeneration||0))return; this.session=data.session||null; if(this.session) await this.loadCloudContext(); else this.setStatus('Supabase configurado. Faça login institucional para sincronizar.','work');}
       catch(e){this.setStatus('Nao foi possivel verificar sessao: '+this.friendlyError(e),'error');}
     },
     async mainLogin(email,password){
       if(!this.client&&!this.initClient())return null;
+      this.invalidateIdentity();
+      const generation=this.identityGeneration;
       const {data,error}=await this.client.auth.signInWithPassword({email,password});
       if(error)throw error;
+      if(generation!==this.identityGeneration)throw new Error('Login substituído por outra tentativa.');
+      if(String(data.user?.email||data.session?.user?.email||'').toLowerCase()!==String(email).trim().toLowerCase())throw new Error('A conta autenticada não corresponde ao e-mail informado.');
       this.session=data.session;
       await this.loadCloudContext();
+      if(!this.identityVerified||this.profile?.id!==data.session?.user?.id){this.invalidateIdentity();throw new Error('Não foi possível confirmar o perfil desta conta.');}
       return this.profile;
     },
     async login(){
@@ -101,6 +113,7 @@
       catch(e){this.setStatus('Erro no login: '+this.friendlyError(e),'error');}
     },
     async logout(){
+      this.invalidateIdentity();
       try{if(this.client)await this.client.auth.signOut({scope:'local'});}catch(e){console.warn('Erro ao encerrar sessão Supabase:',e.message);}
       try{[localStorage,sessionStorage].forEach(st=>Object.keys(st).forEach(k=>{const kk=String(k).toLowerCase(); if(kk.includes('supabase.auth')||kk.startsWith('sb-')||kk.startsWith('vetor_auth')||kk.startsWith('vetor_session')) st.removeItem(k);}));}catch(e){}
       this.session=null; this.profile=null; this.turmas=[]; this.assessments=[];
@@ -111,20 +124,31 @@
       this.setStatus('Sessão institucional encerrada.','work');
     },
     async loadCloudContext(){
+      const generation=this.identityGeneration||0;
       if(!this.client&&!this.initClient())return;
       if(!this.session){const {data}=await this.client.auth.getSession(); this.session=data.session||null;}
       if(!this.session){this.setStatus('Faça login para carregar dados.','work');return;}
-      const uid=this.session.user.id;
+      const session=this.session;
+      const {data:authData,error:authError}=await this.client.auth.getUser();
+      if(generation!==(this.identityGeneration||0))return;
+      if(authError||!authData?.user||authData.user.id!==session.user.id){this.invalidateIdentity();throw new Error('Sessão inválida. Entre novamente.');}
+      const uid=authData.user.id;
       const {data:profile,error:pErr}=await this.client.from('perfis').select('*').eq('id',uid).maybeSingle();
+      if(generation!==(this.identityGeneration||0))return;
       if(pErr)throw pErr;
-      if(!profile)throw new Error('Usuário autenticado, mas sem perfil na tabela perfis.');
-      this.profile=profile;
+      if(!profile||profile.id!==uid||profile.ativo===false)throw new Error('Perfil ausente, inativo ou incompatível com a conta autenticada.');
+      if(String(profile.email||'').trim().toLowerCase()!==String(authData.user.email||'').trim().toLowerCase()){
+        this.invalidateIdentity();throw new Error('O e-mail do perfil não corresponde à conta. Solicite a correção do cadastro.');
+      }
+      this.profile=profile;this.identityVerified=true;
       await this.loadTurmas();
       await this.loadTeacherProfiles();
       try{await window.TurmasVetor?.syncFromSupabase?.();}catch(e){console.warn('Falha ao sincronizar turmas/alunos',e);}
+      if(generation!==(this.identityGeneration||0))return;
       this.renderUserBox();
       this.setStatus(`Conectado como ${profile.nome} (${profile.perfil}).`,'ok');
       await this.listAssessments(false);
+      if(generation!==(this.identityGeneration||0))return;
       document.dispatchEvent(new Event('vetor:cloud-ready'));
       this.scheduleAutoSync();
     },

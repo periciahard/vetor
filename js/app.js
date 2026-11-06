@@ -202,16 +202,10 @@
       if(!rec)return;
       if(!requireDeletePassword('apagar esta avaliacao'))return;
       if(!confirm(`Apagar apenas esta avaliacao?\n\n${this.assessmentLabel(rec)}\n\nOs demais dados serao preservados.`))return;
-      const cloudId=rec.cloud_avaliacao_id;
-      if(cloudId && window.VETORSupabase?.client){
-        const client=window.VETORSupabase.client;
-        const delRes=await client.from('resultados_alunos').delete().eq('avaliacao_id',cloudId);
-        if(delRes.error){alert('Nao foi possivel apagar os resultados na nuvem: '+delRes.error.message);return;}
-        const delResp=await client.from('respostas').delete().eq('avaliacao_id',cloudId);
-        if(delResp.error){alert('Nao foi possivel apagar as respostas na nuvem: '+delResp.error.message);return;}
-        const delAv=await client.from('avaliacoes').delete().eq('id',cloudId);
-        if(delAv.error){alert('Nao foi possivel apagar a avaliacao na nuvem: '+delAv.error.message);return;}
-      }
+      try{
+        if(!window.VETORSupabase?.deleteAssessmentFromCloud)throw new Error('Sincronização indisponível. Recarregue a página.');
+        await window.VETORSupabase.deleteAssessmentFromCloud(rec);
+      }catch(e){alert('Não foi possível concluir a exclusão: '+e.message);return;}
       this.state.assessments=(this.state.assessments||[]).filter(x=>x.id!==id);
       if(this.state.activeAssessmentId===id || this.state.assessment?.id===id){
         this.state.activeAssessmentId=null;
@@ -222,7 +216,10 @@
       }
       this.save();
       this.renderAll();
-      status('#assessmentSaveStatus','Avaliacao apagada. As demais avaliacoes foram preservadas.','ok');
+      window.VETORSupabase.deletingIds?.delete(id);
+      window.InteligenciaV684?.load?.(false);
+      window.Evolucao?.loadCloudHistory?.(true);
+      status('#assessmentSaveStatus','Avaliação apagada da plataforma e da nuvem. As demais foram preservadas.','ok');
     },
     duplicateAssessmentStructure(id=this.state.activeAssessmentId){this.setBlankAssessmentMode(false); const src=this.state.assessments.find(x=>x.id===id)||this.state.assessment; if(!src||!(src.questions||[]).length){alert('Abra uma avaliação com questões, descritores e gabarito para duplicar a estrutura.');return;} const turma=prompt('Informe a nova turma para duplicar a estrutura:', src.turma||''); if(turma===null)return; const date=prompt('Informe a data da nova avaliação (AAAA-MM-DD):', src.date||new Date().toISOString().slice(0,10)); if(date===null)return; this.state.assessment={...structuredClone(DEFAULT_STATE.assessment), id:uid(), title:src.title||'Avaliação duplicada', turma:norm(turma), discipline:src.discipline, descriptorMatrix:src.descriptorMatrix||'saepe', tipo:src.tipo, date:norm(date), teacher:src.teacher||'', questionCount:Number(src.questionCount||src.questions?.length||26), questions:[...(src.questions||[])], descriptors:[...(src.descriptors||[])], key:[...(src.key||[])], students:[], createdAt:new Date().toISOString()}; this.state.assessment.savedSignature=this.metaSignature(); this.state.activeAssessmentId=this.state.assessment.id; this.clearImportDraft(); this.saveAssessmentRecord(false); this.fillMetaInputs(); this.save(); this.renderAll(); this.showView('importar');},
     renderAssessmentManager(){const a=this.state.assessment; const box=$('#activeAssessmentBox'); if(box){if(this.isAssessmentActiveSaved())box.className='statusbox status-ok', box.innerHTML=`<b>Avaliação ativa salva</b><br>${safe(this.assessmentLabel())}<br><small>${(a.questions||[]).length} questões • ${(a.students||[]).length} alunos • ${safe(a.teacher||'Professor não informado')}</small>`; else box.className='statusbox status-work', box.innerHTML='Nenhuma avaliação ativa. Preencha os campos e clique em <b>Salvar avaliação</b> para liberar upload.';}
@@ -312,7 +309,7 @@
       $('#descriptorDiscipline')&&( $('#descriptorDiscipline').onchange=()=>this.renderDescriptors()); $('#descriptorSearch')&&( $('#descriptorSearch').oninput=()=>this.renderDescriptors());
       $('#wizardValidate')&&( $('#wizardValidate').onclick=()=>{this.showView('importar'); $('#validateData')?.click();}); $('#wizardAnalyze')&&( $('#wizardAnalyze').onclick=()=>{const v=this.isAssessmentValid(); if(!v.ok){alert('A estrutura ainda não está válida: '+v.issues.join(', ')); this.showView('importar');} else this.showView('diagnostico');});
       $('#studentSearch')&&( $('#studentSearch').oninput=()=>window.Diagnostico?.renderStudents());
-      $('#clearAll')&&( $('#clearAll').onclick=()=>{if(!requireDeletePassword('apagar todos os dados salvos neste navegador'))return; if(confirm('Apagar todos os dados salvos neste navegador?')){localStorage.removeItem(STORE);localStorage.removeItem(BACKUP_STORE);location.reload();}});
+      $('#clearAll')&&( $('#clearAll').onclick=()=>window.VETORSupabase?.adminPurgeAllAssessments?.());
     },
     showView(id){$$('.view').forEach(v=>v.classList.toggle('active',v.id===id));$$('.nav').forEach(n=>n.classList.toggle('active',n.dataset.view===id));$('#sidebar')?.classList.remove('open'); setTimeout(()=>scrollTo({top:0,behavior:'smooth'}),20);},
     init(){if(this.isBlankAssessmentMode()){this.setBlankAssessmentMode(false); this.resetImportState();} this.bindBase(); $('#assessmentDiscipline')&&($('#assessmentDiscipline').value=this.state.assessment.discipline||this.state.settings.discipline); $('#configDiscipline')&&($('#configDiscipline').value=this.state.settings.discipline); this.fillMetaInputs(); this.setSaveStatus(); this.updateImportLock(); this.renderAll();}

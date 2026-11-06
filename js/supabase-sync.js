@@ -20,7 +20,7 @@
     setStatus(msg,type='work'){
       if(A()?.status && !/^Conectado como /i.test(String(msg||''))) A().status('#cloudStatus',msg,type);
       const mini=document.querySelector('#cloudStatusMini');
-      if(mini){mini.textContent= type==='ok' ? 'Nuvem conectada' : 'Aguardando login'; mini.className='cloud-mini '+(type==='ok'?'ok':'');}
+      if(mini){mini.textContent= type==='ok' ? 'Nuvem conectada' : this.profile ? (type==='error'?'Sincronização pendente':'Sincronizando...') : 'Aguardando login'; mini.className='cloud-mini '+(type==='ok'?'ok':'');}
       const quick=document.querySelector('#cloudQuickStatus');
       if(quick){ if(/^Conectado como /i.test(String(msg||''))){ quick.style.display='none'; quick.textContent=''; } else { quick.style.display='block'; quick.className='statusbox '+(type==='ok'?'status-ok':type==='error'?'status-error':'status-work'); quick.textContent=msg; } }
     },
@@ -52,6 +52,14 @@
       if(u)u.value=cfg.url; if(k)k.value=cfg.anon;
       if(!this.initClient())return;
       this.restoreSession();
+      const app=A();
+      if(app&&!app._cloudSaveHook){
+        const save=app.save.bind(app);
+        app.save=(...args)=>{const result=save(...args);this.scheduleAutoSync();return result;};
+        app._cloudSaveHook=true;
+      }
+      window.addEventListener('online',()=>this.scheduleAutoSync());
+      this.retryTimer=setInterval(()=>this.scheduleAutoSync(),60000);
     },
     initClient(){
       const cfg=this.getConfig();
@@ -118,6 +126,7 @@
       this.setStatus(`Conectado como ${profile.nome} (${profile.perfil}).`,'ok');
       await this.listAssessments(false);
       document.dispatchEvent(new Event('vetor:cloud-ready'));
+      this.scheduleAutoSync();
     },
     async loadTeacherProfiles(){
       this.teacherProfiles=[];
@@ -205,15 +214,21 @@
       if(!passOk){this.setAdminPurgeStatus('Operação cancelada. Senha de confirmação incorreta.','work');return;}
       const first=confirm('Apagar TODAS as avaliações da plataforma?\n\nIsso remove avaliações, resultados dos alunos e respostas. Usuários, turmas e alunos serão preservados.');
       if(!first)return;
+      this.syncPaused=true;
+      clearTimeout(this.syncTimer);
+      await this.syncQueue;
       try{
         this.setAdminPurgeStatus('Apagando dados de avaliação na nuvem...','work');
         const delRes=await this.client.from('resultados_alunos').delete({count:'exact'}).not('avaliacao_id','is',null);
         if(delRes.error)throw delRes.error;
         try{
           const delResp=await this.client.from('respostas').delete({count:'exact'}).not('avaliacao_id','is',null);
-          if(delResp.error)console.warn('Não foi possível limpar respostas item a item:',delResp.error.message);
-        }catch(e){console.warn('Tabela respostas indisponível ou sem permissão:',e.message);}
+          if(delResp.error)throw delResp.error;
+        }catch(e){throw e;}
         const delAv=await this.client.from('avaliacoes').delete({count:'exact'}).not('id','is',null);
+        const remaining=await this.client.from('avaliacoes').select('id').limit(1);
+        if(remaining.error)throw remaining.error;
+        if(remaining.data?.length)throw new Error('O Supabase não confirmou a exclusão de todas as avaliações.');
         if(delAv.error)throw delAv.error;
         this.assessments=[];
         this.selectedCloudAssessment=null;
@@ -224,6 +239,7 @@
         try{await window.InteligenciaV684?.load?.(false);}catch(e){}
         this.setAdminPurgeStatus(`Avaliações apagadas com sucesso. Removidas ${delAv.count||0} avaliação(ões) e ${delRes.count||0} resultado(s) de aluno.`, 'ok');
       }catch(e){this.setAdminPurgeStatus('Erro ao apagar avaliações: '+e.message,'error');}
+      finally{this.syncPaused=false;}
     },
     renderTurmas(){
       const sel=document.querySelector('#cloudTurma'); if(!sel)return;
@@ -243,10 +259,11 @@
       }
       return null;
     },
-    async ensureTurmaForAssessment(){
-      let link=this.selectedTurmaLink();
+    async ensureTurmaForAssessment(record=A()?.state?.assessment){
+      const name=record?.turma||'';
+      let link=this.turmas.find(x=>A().norm(x.turma?.nome||'').toLowerCase()===A().norm(name).toLowerCase());
       if(link)return link;
-      const nome=A()?.state?.assessment?.turma||'';
+      const nome=record?.turma||'';
       if(!nome) return null;
       const clean=A().norm(nome)||'Turma sem nome';
       let {data,error}=await this.client.from('turmas').select('*').ilike('nome',clean).maybeSingle();
@@ -269,21 +286,26 @@
       if(ins.error)throw ins.error; return ins.data.id;
     },
     async saveCurrentAssessment(opts={}){
+      if(opts.syncMeta!==false)A().syncMetaFromInputs?.();
+      const record=structuredClone(opts.record||A().state.assessment);
+      return this.serialize(()=>this.persistAssessment({...opts,syncMeta:false,record}));
+    },
+    async persistAssessment(opts={}){
       const manual = opts.manual!==false;
       if(!this.profile){this.setStatus('Faça login antes de salvar na nuvem.','error');return null;}
+      if(!opts.record&&opts.syncMeta!==false) A().syncMetaFromInputs?.();
+      const a=structuredClone(opts.record||A().state.assessment);
       let link=null;
-      try{link=await this.ensureTurmaForAssessment();}
+      try{link=await this.ensureTurmaForAssessment(a);}
       catch(e){this.setStatus('Erro ao localizar/criar turma no Supabase: '+e.message,'error');return null;}
       if(!link){this.setStatus('Selecione ou informe uma turma antes de salvar.','error');return null;}
 
-      if(opts.syncMeta!==false) A().syncMetaFromInputs?.();
-      const a=A().state.assessment;
       if(!a.questions?.length||!a.students?.length){this.setStatus('Importe e analise uma avaliação antes de salvar.','error');return null;}
 
       const disciplina=this.uiDiscToDb(a.discipline);
-      const titulo=(document.querySelector('#cloudAssessmentTitle')?.value||a.title||'Avaliação').trim();
-      const tipo=document.querySelector('#cloudAssessmentType')?.value||a.tipo||'diagnostica';
-      const data_avaliacao=document.querySelector('#cloudAssessmentDate')?.value||a.date||new Date().toISOString().slice(0,10);
+      const titulo=(a.title||'Avaliação').trim();
+      const tipo=a.tipo||'diagnostica';
+      const data_avaliacao=a.date||new Date().toISOString().slice(0,10);
       this.setStatus('Salvando diagnóstico na nuvem...', 'work');
 
       const payload={
@@ -353,9 +375,9 @@
         av=up.data;
         // Limpa filhos antes de reinserir, evitando resultados e respostas duplicadas.
         const delRes=await this.client.from('resultados_alunos').delete().eq('avaliacao_id',av.id);
-        if(delRes.error){this.setStatus('Avaliação atualizada, mas houve erro ao limpar resultados anteriores: '+delRes.error.message,'error');return av;}
+        if(delRes.error){this.setStatus('Avaliação atualizada, mas houve erro ao limpar resultados anteriores: '+delRes.error.message,'error');return null;}
         const delResp=await this.client.from('respostas').delete().eq('avaliacao_id',av.id);
-        if(delResp.error){console.warn('Erro ao limpar respostas anteriores:', delResp.error.message);}
+        if(delResp.error)throw delResp.error;
       }else{
         // Última checagem imediatamente antes do INSERT.
         try{ existingId=await findExisting(); }catch(e){}
@@ -364,9 +386,9 @@
           if(up.error){this.setStatus('Erro ao atualizar avaliação: '+up.error.message,'error');return null;}
           av=up.data;
           const delRes=await this.client.from('resultados_alunos').delete().eq('avaliacao_id',av.id);
-          if(delRes.error){this.setStatus('Avaliação atualizada, mas houve erro ao limpar resultados anteriores: '+delRes.error.message,'error');return av;}
+          if(delRes.error){this.setStatus('Avaliação atualizada, mas houve erro ao limpar resultados anteriores: '+delRes.error.message,'error');return null;}
           const delResp=await this.client.from('respostas').delete().eq('avaliacao_id',av.id);
-          if(delResp.error){console.warn('Erro ao limpar respostas anteriores:', delResp.error.message);}
+          if(delResp.error)throw delResp.error;
         }else{
           const ins=await this.client.from('avaliacoes').insert(payload).select().single();
           if(ins.error){this.setStatus('Erro ao salvar avaliação: '+ins.error.message,'error');return null;}
@@ -374,7 +396,7 @@
         }
       }
 
-      const r=A().getResults();
+      const r=window.Diagnostico.compute(a);
       const rows=[];
       const respostas=[];
       for(const s of r.students){
@@ -397,7 +419,7 @@
           total:r.summary.nQuestions,
           percentual:s.percent,
           descritores_criticos:crit,
-          relatorio_individual:window.Relatorios?.individual?.(s.index)||null
+          relatorio_individual:null
         });
         (s.answers||[]).forEach((resp,i)=>respostas.push({
           avaliacao_id:av.id,
@@ -410,67 +432,102 @@
 
       if(rows.length){
         const {error:resErr}=await this.client.from('resultados_alunos').insert(rows);
-        if(resErr){this.setStatus('Avaliação salva, mas houve erro nos resultados: '+resErr.message,'error');return av;}
+        if(resErr){this.setStatus('Avaliação salva, mas houve erro nos resultados: '+resErr.message,'error');return null;}
       }
       if(respostas.length){
         const {error:respErr}=await this.client.from('respostas').insert(respostas);
-        if(respErr) console.warn('Erro ao salvar respostas item a item:', respErr.message);
+        if(respErr)throw respErr;
       }
 
-      try{
-        A().state.assessment.cloud_avaliacao_id=av.id;
-        A().state.assessment.cloud_saved_at=new Date().toISOString();
-        A().state.assessment.title=titulo;
-        A().state.assessment.tipo=tipo;
-        A().state.assessment.date=data_avaliacao;
-        A().saveAssessmentRecord?.(false);
-        A().save?.();
-      }catch(e){console.warn('Falha ao registrar ID da nuvem no estado local',e);}
-
+      const app=A();
+      const current=(app.state.assessments||[]).find(x=>x.id===a.id);
+      if(current){
+        current.cloud_avaliacao_id=av.id;
+        current.cloud_saved_at=new Date().toISOString();
+        current.cloud_sync_fingerprint=this.fingerprint(a);
+      }
+      if(app.state.assessment?.id===a.id){
+        Object.assign(app.state.assessment,{cloud_avaliacao_id:av.id,cloud_saved_at:current?.cloud_saved_at,
+          cloud_sync_fingerprint:this.fingerprint(a)});
+      }
+      app.save?.();
       this.setStatus(existingId?'Diagnóstico atualizado na nuvem com sucesso.':'Diagnóstico salvo na nuvem com sucesso.','ok');
-      await this.listAssessments(false);
+      if(manual)await this.listAssessments(false);
       try{window.Evolucao?.loadCloudHistory?.(true);}catch(e){}
       return av;
     },
-    async autoSaveCurrentAssessment(){
-      if(!this.client) this.initClient();
-      if(!this.profile){try{await this.restoreSession();}catch(e){return null;}}
-      if(!this.profile)return null;
-      const a=A().state.assessment||{};
-      if(!a.questions?.length||!a.students?.length)return null;
-      try{return await this.saveCurrentAssessment({manual:false});}
-      catch(e){this.setStatus('Falha no salvamento automático: '+e.message,'error');return null;}
+    fingerprint(a){
+      return JSON.stringify([a.title,a.turma,a.discipline,a.tipo,a.date,a.descriptorMatrix,a.questions,a.descriptors,a.key,a.students]);
     },
-    async autoSaveAssessmentIds(ids=[]){
-      if(!this.client) this.initClient();
-      if(!this.profile){try{await this.restoreSession();}catch(e){return null;}}
-      if(!this.profile)return null;
-      const app=A();
-      const unique=[...new Set((ids||[]).filter(Boolean))];
-      if(!unique.length)return null;
-      const previousId=app.state.activeAssessmentId;
-      const previousAssessment={...(app.state.assessment||{})};
-      let saved=0;
-      try{
-        for(const id of unique){
-          const rec=(app.state.assessments||[]).find(x=>x.id===id);
-          if(!rec?.questions?.length||!rec?.students?.length)continue;
-          app.state.assessment={...rec};
-          app.state.activeAssessmentId=rec.id;
-          const av=await this.saveCurrentAssessment({manual:false,syncMeta:false});
-          if(av)saved++;
+    serialize(task){
+      const next=(this.syncQueue||Promise.resolve()).catch(()=>{}).then(task);
+      this.syncQueue=next.catch(()=>{});
+      return next;
+    },
+    scheduleAutoSync(){
+      if(this.syncPaused)return;
+      clearTimeout(this.syncTimer);
+      this.syncTimer=setTimeout(()=>this.autoSaveAssessmentIds(),1200);
+    },
+    async autoSaveCurrentAssessment(){
+      return this.autoSaveAssessmentIds([A()?.state?.assessment?.id]);
+    },
+    async autoSaveAssessmentIds(ids){
+      return this.serialize(async()=>{
+        if(this.syncPaused)return 0;
+        if(!this.client)this.initClient();
+        if(!this.profile){
+          this.setStatus('Dados salvos neste navegador. Entre na conta para sincronizar com a nuvem.','error');
+          return 0;
         }
-      }catch(e){
-        this.setStatus('Falha no salvamento automatico em lote: '+e.message,'error');
-      }finally{
-        const restore=(app.state.assessments||[]).find(x=>x.id===previousId)||previousAssessment;
-        app.state.assessment={...restore};
-        app.state.activeAssessmentId=restore?.id||previousId||null;
-        app.save?.();
-        app.renderAll?.();
-      }
-      if(saved>1)this.setStatus(saved+' diagnosticos salvos na nuvem com sucesso.','ok');
-      return saved;
+        const app=A(), allowed=window.AuthSupabase?.filteredAssessments?.()||app.state.assessments||[];
+        const requested=ids?new Set(ids):null;
+        let saved=0,failed=0;
+        for(const source of allowed){
+          if(this.deletingIds?.has(source.id)||requested&&!requested.has(source.id))continue;
+          if(!source.questions?.length||!source.students?.length)continue;
+          if(source.cloud_sync_fingerprint===this.fingerprint(source))continue;
+          try{
+            const av=await this.persistAssessment({manual:false,syncMeta:false,record:source});
+            if(av)saved++;else failed++;
+          }catch(e){failed++;this.setStatus('Sincronização pendente: '+e.message,'error');}
+        }
+        if(failed)this.setStatus(failed+' avaliação(ões) com sincronização pendente. Os dados locais foram preservados.','error');
+        else if(saved)this.setStatus(saved+' avaliação(ões) salvas automaticamente na nuvem.','ok');
+        return saved;
+      });
+    },
+    async deleteAssessmentFromCloud(record){
+      this.deletingIds=this.deletingIds||new Set();
+      this.deletingIds.add(record.id);
+      try{
+        return await this.serialize(async()=>{
+          if(!this.client)this.initClient();
+          if(!this.profile)await this.restoreSession();
+          if(!this.client||!this.profile)throw new Error('Entre na conta e conecte-se à internet para apagar também na nuvem.');
+          const ids=new Set([record.cloud_avaliacao_id].filter(Boolean));
+          // Recover the link if a previous upload failed before storing its cloud ID.
+          const found=await this.client.from('avaliacoes').select('id,turmas(nome)')
+            .eq('titulo',record.title||'Avaliação').eq('disciplina',this.uiDiscToDb(record.discipline))
+            .eq('data_aplicacao',record.date);
+          if(found.error)throw found.error;
+          const normalize=n=>String(A().cleanTurmaName?.(n)||n||'').trim().toLowerCase();
+          for(const row of found.data||[]){
+            if(normalize(row.turmas?.nome)===normalize(record.turma))ids.add(row.id);
+          }
+          for(const id of ids){
+            for(const table of ['respostas','resultados_alunos']){
+              const res=await this.client.from(table).delete().eq('avaliacao_id',id);
+              if(res.error)throw res.error;
+            }
+            const res=await this.client.from('avaliacoes').delete().eq('id',id).select('id');
+            if(res.error)throw res.error;
+            if(!(res.data||[]).some(row=>row.id===id))throw new Error('Exclusão não confirmada pelo Supabase. Verifique sua permissão.');
+          }
+          this.assessments=this.assessments.filter(av=>!ids.has(av.id));
+          return true;
+        });
+      }catch(e){this.deletingIds.delete(record.id);throw e;}
     },
     async syncAssessmentsToApp(){
       const app=A(), profile=this.profile, client=this.client;
@@ -500,6 +557,7 @@
           questionCount:av.questoes_json.length,descriptorMatrix:av.descritores_json?.matrix||'saepe',descriptors:Array.isArray(av.descritores_json)?av.descritores_json:(av.descritores_json?.codes||[]),
           key:av.gabarito_json||[],students,multiTurmas:1,turmas:[av.turmas?.nome||''],
           createdAt:av.criado_em,updatedAt:av.criado_em,cloud_saved_at:new Date().toISOString()};
+        record.cloud_sync_fingerprint=this.fingerprint(record);
         record.savedSignature=app.metaSignature(record);
         records.push(record);
       }

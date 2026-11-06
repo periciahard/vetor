@@ -225,7 +225,35 @@
       status('#assessmentSaveStatus','Avaliacao apagada. As demais avaliacoes foram preservadas.','ok');
     },
     duplicateAssessmentStructure(id=this.state.activeAssessmentId){this.setBlankAssessmentMode(false); const src=this.state.assessments.find(x=>x.id===id)||this.state.assessment; if(!src||!(src.questions||[]).length){alert('Abra uma avaliação com questões, descritores e gabarito para duplicar a estrutura.');return;} const turma=prompt('Informe a nova turma para duplicar a estrutura:', src.turma||''); if(turma===null)return; const date=prompt('Informe a data da nova avaliação (AAAA-MM-DD):', src.date||new Date().toISOString().slice(0,10)); if(date===null)return; this.state.assessment={...structuredClone(DEFAULT_STATE.assessment), id:uid(), title:src.title||'Avaliação duplicada', turma:norm(turma), discipline:src.discipline, descriptorMatrix:src.descriptorMatrix||'saepe', tipo:src.tipo, date:norm(date), teacher:src.teacher||'', questionCount:Number(src.questionCount||src.questions?.length||26), questions:[...(src.questions||[])], descriptors:[...(src.descriptors||[])], key:[...(src.key||[])], students:[], createdAt:new Date().toISOString()}; this.state.assessment.savedSignature=this.metaSignature(); this.state.activeAssessmentId=this.state.assessment.id; this.clearImportDraft(); this.saveAssessmentRecord(false); this.fillMetaInputs(); this.save(); this.renderAll(); this.showView('importar');},
-    renderAssessmentManager(){const a=this.state.assessment; const box=$('#activeAssessmentBox'); if(box){if(this.isAssessmentActiveSaved())box.className='statusbox status-ok', box.innerHTML=`<b>Avaliação ativa salva</b><br>${safe(this.assessmentLabel())}<br><small>${(a.questions||[]).length} questões • ${(a.students||[]).length} alunos • ${safe(a.teacher||'Professor não informado')}</small>`; else box.className='statusbox status-work', box.innerHTML='Nenhuma avaliação ativa. Preencha os campos e clique em <b>Salvar avaliação</b> para liberar upload.';} const hist=$('#assessmentHistory'); if(hist){const list=this.state.assessments||[];hist.innerHTML=list.length?list.map(rec=>`<div class="assessment-item ${rec.id===this.state.activeAssessmentId?'active':''}"><div><b>${safe(rec.title||'Avaliação')}</b><br><span>${safe(this.assessmentLabel(rec))}</span><br><small>${(rec.questions||[]).length} questões • ${(rec.students||[]).length} alunos • ${new Date(rec.updatedAt||rec.createdAt||Date.now()).toLocaleString('pt-BR')}</small></div><div class="assessment-actions"><button class="smallBtn" data-open-assessment="${rec.id}">Abrir</button><button class="smallBtn secondary" data-dup-assessment="${rec.id}">Duplicar estrutura</button></div></div>`).join(''):'<p class="hint">Nenhuma avaliação salva ainda.</p>'; hist.querySelectorAll('[data-open-assessment]').forEach(b=>b.onclick=()=>this.openAssessment(b.dataset.openAssessment)); hist.querySelectorAll('[data-dup-assessment]').forEach(b=>b.onclick=()=>this.duplicateAssessmentStructure(b.dataset.dupAssessment));} this.updateImportLock();},
+    renderAssessmentManager(){const a=this.state.assessment; const box=$('#activeAssessmentBox'); if(box){if(this.isAssessmentActiveSaved())box.className='statusbox status-ok', box.innerHTML=`<b>Avaliação ativa salva</b><br>${safe(this.assessmentLabel())}<br><small>${(a.questions||[]).length} questões • ${(a.students||[]).length} alunos • ${safe(a.teacher||'Professor não informado')}</small>`; else box.className='statusbox status-work', box.innerHTML='Nenhuma avaliação ativa. Preencha os campos e clique em <b>Salvar avaliação</b> para liberar upload.';}
+      const hist=$('#assessmentHistory');
+      if(hist){
+        const previous=hist.querySelector('#assessmentHistorySelect')?.value||hist.dataset.selectedId||'';
+        const list=window.AuthSupabase?.user?.()&&window.AuthSupabase?.filteredAssessments
+          ?window.AuthSupabase.filteredAssessments():(this.state.assessments||[]);
+        const chosen=list.find(rec=>rec.id===previous)||list.find(rec=>rec.id===this.state.activeAssessmentId)||list[0];
+        hist.dataset.selectedId=chosen?.id||'';
+        const label=rec=>[rec.title||'Avaliação',this.cleanTurmaName?.(rec.turma)||rec.turma||'Turma',rec.discipline||'',rec.date||''].filter(Boolean).join(' • ');
+        hist.innerHTML=list.length?
+          `<label for="assessmentHistorySelect">Avaliação salva</label>
+          <select id="assessmentHistorySelect" aria-label="Escolher avaliação salva">${list.map(rec=>`<option value="${safe(rec.id)}" ${rec.id===chosen.id?'selected':''}>${safe(label(rec))}</option>`).join('')}</select>
+          <div class="assessment-item assessment-history-selected">
+            <div class="assessment-history-info"><b>${safe(chosen.title||'Avaliação')}</b>
+            <p>${safe(label(chosen))}</p><small>${(chosen.questions||[]).length} questões • ${(chosen.students||[]).length} alunos</small></div>
+            <div class="assessment-actions">
+              <button type="button" data-open-assessment="${safe(chosen.id)}">Abrir</button>
+              <button type="button" class="secondary" data-dup-assessment="${safe(chosen.id)}">Duplicar estrutura</button>
+              <button type="button" class="danger" data-delete-assessment="${safe(chosen.id)}">Apagar</button>
+            </div>
+          </div>`:'<p class="hint">Nenhuma avaliação salva ainda.</p>';
+        const select=hist.querySelector('#assessmentHistorySelect');
+        if(select)select.onchange=()=>{hist.dataset.selectedId=select.value;this.renderAssessmentManager();};
+        hist.querySelector('[data-open-assessment]')?.addEventListener('click',()=>this.openAssessment(chosen.id));
+        hist.querySelector('[data-dup-assessment]')?.addEventListener('click',()=>this.duplicateAssessmentStructure(chosen.id));
+        hist.querySelector('[data-delete-assessment]')?.addEventListener('click',()=>this.deleteAssessment(chosen.id));
+      }
+      this.updateImportLock();
+    },
     updateImportLock(){const unlocked=this.isAssessmentActiveSaved(); ['fileInput','extractFile','loadExample','pdfOnlyInput','readPdfOnly','pasteData','validateData','validateDataGate','confirmImport'].forEach(id=>{const el=$('#'+id); if(el)el.disabled=!unlocked || (id==='confirmImport' && !window.Importacao?.pending);}); const ex=$('#extractStatus'); if(ex&&!unlocked) status(ex,'Salve uma avaliação antes de importar dados.','work'); return unlocked;},
     clearImportDraft(){this.resetImportState(); const f=$('#fileInput'); if(f)f.value=''; const pdf=$('#pdfOnlyInput'); if(pdf)pdf.value=''; const paste=$('#pasteData'); if(paste)paste.value=''; const prev=$('#previewImport'); if(prev)prev.innerHTML=''; const vr=$('#validationResult'); if(vr)vr.innerHTML=''; const gate=$('#importGate'); if(gate)status(gate,'Aguardando importação ou validação.','work'); const confirm=$('#confirmImport'); if(confirm)confirm.disabled=true;},
     getResults(){if(!this.isAssessmentActiveSaved())return {students:[],items:[],descriptorStats:[],summary:{nStudents:0,nQuestions:0,avg:0}};return window.Diagnostico?.compute(this.state.assessment)||{students:[],items:[],descriptorStats:[],summary:{nStudents:0,nQuestions:0,avg:0}}},

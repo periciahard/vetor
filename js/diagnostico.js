@@ -405,7 +405,8 @@ function sameApplication(a,b){
   const normalized=/^simulado\d+$/.test(tipo)?'simulado':(tipo==='bimestral'?'avaliacao':tipo);
   const tipoMap={diagnostica:'Diagnóstica',simulado:'Simulado',recuperacao:'Recuperação',avaliacao:'Avaliação',personalizada:'Personalizada',bimestral:'Avaliação',...Object.fromEntries(Array.from({length:10},(_,i)=>['simulado'+(i+1),'Simulado '+(i+1)]))};
   const label=normalized==='personalizada'&&(a.customType||'').trim()?(a.customType||'').trim():(tipoMap[a.tipo]||tipoMap[normalized]||a.tipo||'Tipo?');
-  return `${a.turma||'Turma?'} • ${a.discipline||'Disciplina?'} • ${label}`;
+  const title=String(a.title||'').trim()||label;
+  return `${a.turma||'Turma?'} • ${a.discipline||'Disciplina?'} • ${title}`;
  }
  function validSavedAssessments(){
   const list=(A().state.assessments||[]).filter(x=>(x.students||[]).length && (x.questions||[]).length);
@@ -465,7 +466,11 @@ function sameApplication(a,b){
   compareSelectedIds=compareSelectedIds.filter(id=>choices.some(x=>x.id===id));
   if(!choices.length){ optionsBox.innerHTML='<span class="hint">Nenhuma outra turma/avaliação salva para comparar.</span>'; return; }
   const series=[['1','1º ano'],['2','2º ano'],['3','3º ano']];
-  const renderItem=x=>{const checked=compareSelectedIds.includes(x.id);return `<label class="compare-assessment-chip ${checked?'selected':''}"><input type="checkbox" value="${A().safe(x.id)}" ${checked?'checked':''}/><span>${A().safe(assessmentName(x))}</span><small>${(x.students||[]).length} alunos</small></label>`;};
+  const renderItem=x=>{
+   const checked=compareSelectedIds.includes(x.id);
+   const title=String(x.title||'').trim()||A().assessmentTypeLabel?.(x)||'Avaliação';
+   return `<label class="compare-assessment-chip compare-assessment-readable ${checked?'selected':''}"><input type="checkbox" value="${A().safe(x.id)}" ${checked?'checked':''}/><span class="compare-assessment-copy"><b class="compare-assessment-title">${A().safe(title)}</b><span class="compare-assessment-class">${A().safe(A().cleanTurmaName?.(x.turma)||x.turma||'Turma não informada')}</span><small class="compare-assessment-count">${(x.students||[]).length} alunos</small></span></label>`;
+  };
   const cols=series.map(([key,label])=>{
     const inSerie=sortAssessmentList(choices.filter(x=>assessmentSerie(x)===key));
     const rows=['Língua Portuguesa','Matemática'].map(disc=>{

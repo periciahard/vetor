@@ -32,9 +32,9 @@
   const hasLabelColumn=labelWords.some(w=>firstCell.includes(w)) || rowLabelWords.some(w=>secondCell.includes(w)||thirdCell.includes(w)) || firstCell==='';
   const start=hasLabelColumn?1:0;
   const expected=expectedQuestionCount();
-  const rawWindow=expected?first.slice(start,start+expected):first.slice(start);
-  const descWindow=expected?second.slice(start,start+expected):second.slice(start);
-  const keyWindow=expected?third.slice(start,start+expected):third.slice(start);
+  const rawWindow=expected?first.slice(start):first.slice(start);
+  const descWindow=expected?second.slice(start):second.slice(start);
+  const keyWindow=expected?third.slice(start):third.slice(start);
   let lastQuestionCol=-1;
   for(let i=0;i<Math.max(rawWindow.length,descWindow.length,keyWindow.length);i++){
     const hasQuestion=A().norm(rawWindow[i]);
@@ -55,9 +55,9 @@
     const first=A().norm(r[0]);
     const name=hasLabelColumn ? first : (first && !A().letter(first) ? first : '');
     const answerStart=hasLabelColumn ? start : (name ? 1 : 0);
-    return {name,answers:r.slice(answerStart,answerStart+questions.length).map(v=>A().letter(v))};
+    return {name,answers:Array.from({length:questions.length},(_,i)=>A().letter(r[answerStart+i]))};
   }).filter(s=>s.name&&!isPlaceholderStudentName(s.name));
-  const issues=[]; if(!questions.length)issues.push('Nenhuma questão encontrada.'); if(descriptors.some(x=>!x))issues.push('Há questões sem descritor entre Q1 e Q'+questions.length+'.'); if(key.some(x=>!x))issues.push('Há itens sem gabarito A-E entre Q1 e Q'+questions.length+'.'); students.forEach(s=>{if(s.answers.length<questions.length)issues.push('Aluno '+s.name+' possui respostas incompletas.')});
+  const issues=[]; if(!students.length)issues.push('Nenhum aluno com nome identificado.'); if(!questions.length)issues.push('Nenhuma questão encontrada.'); if(descriptors.some(x=>!x))issues.push('Há questões sem descritor entre Q1 e Q'+questions.length+'.'); key.forEach((v,i)=>{if(!v)issues.push('Gabarito inválido na questão Q'+(i+1)+' (linha 3, coluna '+(start+i+1)+'): informe A, B, C, D ou E.');}); students.forEach(s=>{if(s.answers.length<questions.length)issues.push('Aluno '+s.name+' possui respostas incompletas.')});
   const disc=A().$('#assessmentDiscipline')?.value||A().state?.assessment?.discipline||A().state?.settings?.discipline||'Língua Portuguesa';
   const validCodes=window.Descritores?.validCodes?.(disc);
   if(validCodes){const invalid=[...new Set(descriptors.filter(d=>d&&!validCodes.has(d)))]; if(invalid.length)issues.push('Descritores fora da matriz da 3ª série do Ensino Médio em '+disc+': '+invalid.join(', '));}
@@ -73,7 +73,6 @@
  function parseTextTable(text){return text.trim().split(/\n+/).map(line=>line.split(/\t|;|,/).map(x=>x.trim()));}
  function turmaFromFileName(name){return A().norm(String(name||'').replace(/\.(xlsx|xls|csv|txt)$/i,'').replace(/C[oó]pia de/gi,'').replace(/BRANCO/gi,'').replace(/_/g,' '))||'Turma';}
  function sameArray(a,b){return (a||[]).length===(b||[]).length && (a||[]).every((v,i)=>A().norm(v).toUpperCase()===A().norm((b||[])[i]).toUpperCase());}
- function mergeAssessments(parts){const first=parts[0]; const issues=[...(first.issues||[])]; const students=[]; const turmas=[]; parts.forEach((part,idx)=>{const turma=part.turma||('Turma '+(idx+1)); if(!turmas.includes(turma))turmas.push(turma); if(idx>0){ if(!sameArray(first.questions,part.questions))issues.push('A planilha '+turma+' possui questões diferentes da primeira planilha.'); if(!sameArray(first.descriptors,part.descriptors))issues.push('A planilha '+turma+' possui descritores diferentes da primeira planilha.'); if(!sameArray(first.key,part.key))issues.push('A planilha '+turma+' possui gabarito diferente da primeira planilha.'); issues.push(...(part.issues||[])); } (part.students||[]).forEach(st=>students.push({...st,turma})); }); return {...first,students,issues:[...new Set(issues)],turmas,multiTurmas:turmas.length};}
  function mergeAssessments(parts){const first=parts[0]; const issues=[]; const students=[]; const turmas=[]; const normalizedParts=parts.map((part,idx)=>{const turma=part.turma||('Turma '+(idx+1)); if(!turmas.includes(turma))turmas.push(turma); (part.issues||[]).forEach(i=>issues.push(turma+': '+i)); (part.students||[]).forEach(st=>students.push({...st,turma})); return {...part,turma,students:(part.students||[]).map(st=>({...st,turma}))};}); return {...first,students,issues:[...new Set(issues)],turmas,multiTurmas:turmas.length,parts:normalizedParts};}
  async function readExcel(file){const buf=await file.arrayBuffer();const wb=XLSX.read(buf,{type:'array'});let best=null;for(const name of wb.SheetNames){const rows=XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1,raw:false,defval:''}); if(!best||rows.length>(best.rows?.length||0))best={name,rows};}return best.rows;}
  async function readPdf(file){if(!window.pdfjsLib)throw new Error('Biblioteca PDF não carregada.'); pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; const ab=await file.arrayBuffer(); const pdf=await pdfjsLib.getDocument({data:ab}).promise; let text=''; for(let p=1;p<=pdf.numPages;p++){const page=await pdf.getPage(p);const tc=await page.getTextContent(); text+=tc.items.map(i=>i.str).join(' ')+'\n';} return text;}

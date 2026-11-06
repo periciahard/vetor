@@ -30,10 +30,24 @@
     },
     resultsFor(avId){return this.rows.filter(r=>r.avaliacao_id===avId);},
     avgFor(avId){return avg(this.resultsFor(avId).map(r=>r.percentual));},
-    async load(show=true){
+    load(show=true){
+      if(this.loading)return this.loading;
+      this.loading=Promise.resolve().then(()=>this.loadData(show)).finally(()=>{this.loading=null;});
+      return this.loading;
+    },
+    async loadData(show=true){
       const cloud=window.VETORSupabase;
+      if(cloud && !cloud.profile){
+        this.renderStatus('Verificando sessão e carregando histórico...','work');
+        await cloud.restoreSession?.();
+      }
       const c=cloud?.client;
-      if(!c || !cloud?.profile){this.renderStatus('Faça login para carregar a Inteligência Pedagógica V68.7.','work');return false;}
+      if(!c || !cloud?.profile){
+        const cached=window.AuthSupabase?.user?.();
+        this.renderStatus(cached?'Não foi possível sincronizar a sessão com a nuvem. Atualize o painel para tentar novamente.':'Entre na plataforma para carregar o histórico da nuvem.','work');
+        return false;
+      }
+      const profile=cloud.profile;
       try{
 
         const [avRes,rowRes,turmaRes]=await Promise.all([
@@ -44,9 +58,10 @@
         if(avRes.error)throw avRes.error;
         if(rowRes.error)throw rowRes.error;
         if(turmaRes.error)throw turmaRes.error;
+        if(cloud.profile!==profile)return false;
         this.avs=avRes.data||[]; this.rows=rowRes.data||[]; this.turmas=turmaRes.data||[]; this.loadedAt=new Date();
         this.renderAll();
-        if(show)this.renderStatus(`Inteligência V68.7 atualizada: ${this.avs.length} avaliações e ${this.rows.length} resultados lidos do Supabase.`, 'ok');
+        this.renderStatus(`Inteligência V68.7 atualizada: ${this.avs.length} avaliações e ${this.rows.length} resultados lidos do Supabase.`, 'ok');
         return true;
       }catch(e){this.renderStatus('Erro ao carregar Inteligência V68.7: '+e.message,'error');return false;}
     },
@@ -155,6 +170,7 @@
   window.InteligenciaV684=IA;
   document.addEventListener('DOMContentLoaded',()=>{
     IA.bind();
+    document.addEventListener('vetor:cloud-ready',()=>IA.load(false));
     setTimeout(()=>IA.load(false),1600);
   });
 })();

@@ -295,7 +295,7 @@
         data_aplicacao:data_avaliacao,
         data_avaliacao,
         questoes_json:a.questions,
-        descritores_json:a.descriptorMatrix==='saeb'?{version:1,matrix:'saeb',codes:a.descriptors}:a.descriptors,
+        descritores_json:['saeb','mista'].includes(a.descriptorMatrix)?{version:1,matrix:a.descriptorMatrix,codes:a.descriptors}:a.descriptors,
         gabarito_json:a.key
       };
 

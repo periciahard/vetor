@@ -17,6 +17,7 @@ function normalizeProfile(profile){
   if(!profile) return null;
   const role=roleFromPerfil(profile.perfil||profile.role);
   return {
+    id: profile.id,
     login: profile.email || profile.login || '',
     nome: profile.nome || profile.email || 'Usuário',
     perfil: profile.perfil || (role==='admin'?'admin':role==='coord'?'coordenação':'professor'),
@@ -28,10 +29,15 @@ function normalizeProfile(profile){
     ativo: true
   };
 }
-function current(){try{return JSON.parse(localStorage.getItem(STORE)||sessionStorage.getItem(STORE)||'null')}catch{return null}}
+function current(){
+ const cloud=window.VETORSupabase;
+ if(!cloud?.identityVerified||!cloud.profile?.id||cloud.profile.id!==cloud.session?.user?.id)return null;
+ return normalizeProfile(cloud.profile);
+}
 function saveUser(user,remember=true){
   const u=normalizeProfile(user);
   if(!u)return;
+  localStorage.removeItem(STORE); sessionStorage.removeItem(STORE);
   const target=remember?localStorage:sessionStorage;
   target.setItem(STORE,JSON.stringify(u));
 }
@@ -77,7 +83,7 @@ function turmaOk(u,turma){
  return !!y && u.anos.includes(y);
 }
 function assessmentOk(u,a){return !!u && (u.all || (turmaOk(u,a?.turma) && disciplineOk(u,a?.discipline)));}
-function lock(){document.body.classList.add('auth-locked'); if($('#loginScreen')) $('#loginScreen').style.display='flex';}
+function lock(){document.body.classList.remove('role-admin','role-coord','role-coordenacao','role-prof','role-professor'); document.body.classList.add('auth-locked'); if($('#loginScreen')) $('#loginScreen').style.display='flex';}
 function unlock(u){
  document.body.classList.remove('auth-locked');
  document.body.classList.remove('role-admin','role-coord','role-coordenacao','role-prof','role-professor');
@@ -96,11 +102,13 @@ async function login(){
  const msg=$('#loginMsg');
  if(msg)msg.textContent='Entrando...';
  if(!loginValue.includes('@')){if(msg)msg.textContent='Use o e-mail institucional cadastrado no Supabase.'; return;}
+ lock();
+ localStorage.removeItem(STORE);sessionStorage.removeItem(STORE);
  try{
    const profile=await window.VETORSupabase?.mainLogin?.(loginValue,passValue);
    if(!profile)throw new Error('Perfil não encontrado. Verifique a tabela perfis no Supabase.');
    const u=normalizeProfile(profile);
-   saveUser(u,true); unlock(u); if(mustChangePassword(profile,u)) showPasswordModal(true); if(msg)msg.textContent='';
+   saveUser(profile,$('#loginRemember')?.checked!==false); unlock(u); if(mustChangePassword(profile,u)) showPasswordModal(true); if(msg)msg.textContent='';
  }catch(e){if(msg)msg.textContent=friendlyAuthError(e); lock();}
 }
 
@@ -357,15 +365,23 @@ function applyPermissions(){
  patchApp(); permissionsNav(); filterTurmaSelects(); filterBankUI(); applySystemVisibility(); renderUsersAdmin(); if(user()?.role==='admin') setTimeout(adminLoadProfiles,300);
 }
 
-function restoreFromSupabase(){
- if(sessionStorage.getItem('vetor_force_logout')==='1'){sessionStorage.removeItem('vetor_force_logout'); clearUser(); lock(); return;}
- const cached=user();
- if(cached) unlock(cached); else lock();
- setTimeout(()=>{
-   const profile=window.VETORSupabase?.profile;
-   if(profile){const u=normalizeProfile(profile); saveUser(u,true); unlock(u); if(mustChangePassword(profile,u)) showPasswordModal(true);}
- },1400);
+function acceptVerifiedSession(){
+ const u=current();
+ if(!u){lock();return;}
+ saveUser(window.VETORSupabase.profile,true);
+ unlock(u);
+ if(mustChangePassword(window.VETORSupabase.profile,u))showPasswordModal(true);
 }
+function restoreFromSupabase(){
+ lock();
+ localStorage.removeItem(STORE);sessionStorage.removeItem(STORE);
+ if(sessionStorage.getItem('vetor_force_logout')==='1'){
+  sessionStorage.removeItem('vetor_force_logout');clearUser();return;
+ }
+ acceptVerifiedSession();
+}
+document.addEventListener('vetor:cloud-ready',acceptVerifiedSession);
+document.addEventListener('vetor:auth-invalid',()=>{localStorage.removeItem(STORE);sessionStorage.removeItem(STORE);lock();});
 
 function bind(){
  bindPasswordButtons(); bindAdminUI();

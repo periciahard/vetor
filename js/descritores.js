@@ -71,9 +71,223 @@
   return '';
  }
  function codeKey(code){const m=String(code||'').trim().match(/^D\s*0*(\d+)$/i);return m?'D'+Number(m[1]):'';}
+ const saebLP=[
+  {
+    "codigo": "D1",
+    "texto": "Localizar informações explícitas em um texto.",
+    "disciplina": "Língua Portuguesa",
+    "topico": "I. Procedimentos de Leitura",
+    "explicacao": "Localizar informações explícitas em um texto.",
+    "bncc": "",
+    "fonte": "SAEB - Matriz de Referência da 3ª série do Ensino Médio",
+    "matriz": "saeb"
+  },
+  {
+    "codigo": "D3",
+    "texto": "Inferir o sentido de uma palavra ou expressão.",
+    "disciplina": "Língua Portuguesa",
+    "topico": "I. Procedimentos de Leitura",
+    "explicacao": "Inferir o sentido de uma palavra ou expressão.",
+    "bncc": "",
+    "fonte": "SAEB - Matriz de Referência da 3ª série do Ensino Médio",
+    "matriz": "saeb"
+  },
+  {
+    "codigo": "D4",
+    "texto": "Inferir uma informação implícita em um texto.",
+    "disciplina": "Língua Portuguesa",
+    "topico": "I. Procedimentos de Leitura",
+    "explicacao": "Inferir uma informação implícita em um texto.",
+    "bncc": "",
+    "fonte": "SAEB - Matriz de Referência da 3ª série do Ensino Médio",
+    "matriz": "saeb"
+  },
+  {
+    "codigo": "D6",
+    "texto": "Identificar o tema de um texto.",
+    "disciplina": "Língua Portuguesa",
+    "topico": "I. Procedimentos de Leitura",
+    "explicacao": "Identificar o tema de um texto.",
+    "bncc": "",
+    "fonte": "SAEB - Matriz de Referência da 3ª série do Ensino Médio",
+    "matriz": "saeb"
+  },
+  {
+    "codigo": "D14",
+    "texto": "Distinguir um fato da opinião relativa a esse fato.",
+    "disciplina": "Língua Portuguesa",
+    "topico": "I. Procedimentos de Leitura",
+    "explicacao": "Distinguir um fato da opinião relativa a esse fato.",
+    "bncc": "",
+    "fonte": "SAEB - Matriz de Referência da 3ª série do Ensino Médio",
+    "matriz": "saeb"
+  },
+  {
+    "codigo": "D5",
+    "texto": "Interpretar texto com auxílio de material gráfico diverso (propagandas, quadrinhos, foto etc.).",
+    "disciplina": "Língua Portuguesa",
+    "topico": "II. Implicações do Suporte, do Gênero e/ou do Enunciador na Compreensão do Texto",
+    "explicacao": "Interpretar texto com auxílio de material gráfico diverso (propagandas, quadrinhos, foto etc.).",
+    "bncc": "",
+    "fonte": "SAEB - Matriz de Referência da 3ª série do Ensino Médio",
+    "matriz": "saeb"
+  },
+  {
+    "codigo": "D12",
+    "texto": "Identificar a finalidade de textos de diferentes gêneros.",
+    "disciplina": "Língua Portuguesa",
+    "topico": "II. Implicações do Suporte, do Gênero e/ou do Enunciador na Compreensão do Texto",
+    "explicacao": "Identificar a finalidade de textos de diferentes gêneros.",
+    "bncc": "",
+    "fonte": "SAEB - Matriz de Referência da 3ª série do Ensino Médio",
+    "matriz": "saeb"
+  },
+  {
+    "codigo": "D20",
+    "texto": "Reconhecer diferentes formas de tratar uma informação na comparação de textos que tratam do mesmo tema, em função das condições em que ele foi produzido e daquelas em que será recebido.",
+    "disciplina": "Língua Portuguesa",
+    "topico": "III. Relação entre Textos",
+    "explicacao": "Reconhecer diferentes formas de tratar uma informação na comparação de textos que tratam do mesmo tema, em função das condições em que ele foi produzido e daquelas em que será recebido.",
+    "bncc": "",
+    "fonte": "SAEB - Matriz de Referência da 3ª série do Ensino Médio",
+    "matriz": "saeb"
+  },
+  {
+    "codigo": "D21",
+    "texto": "Reconhecer posições distintas entre duas ou mais opiniões relativas ao mesmo fato ou ao mesmo tema.",
+    "disciplina": "Língua Portuguesa",
+    "topico": "III. Relação entre Textos",
+    "explicacao": "Reconhecer posições distintas entre duas ou mais opiniões relativas ao mesmo fato ou ao mesmo tema.",
+    "bncc": "",
+    "fonte": "SAEB - Matriz de Referência da 3ª série do Ensino Médio",
+    "matriz": "saeb"
+  },
+  {
+    "codigo": "D2",
+    "texto": "Estabelecer relações entre partes de um texto, identificando repetições ou substituições que contribuem para a continuidade de um texto.",
+    "disciplina": "Língua Portuguesa",
+    "topico": "IV. Coerência e Coesão no Processamento do Texto",
+    "explicacao": "Estabelecer relações entre partes de um texto, identificando repetições ou substituições que contribuem para a continuidade de um texto.",
+    "bncc": "",
+    "fonte": "SAEB - Matriz de Referência da 3ª série do Ensino Médio",
+    "matriz": "saeb"
+  },
+  {
+    "codigo": "D7",
+    "texto": "Identificar a tese de um texto.",
+    "disciplina": "Língua Portuguesa",
+    "topico": "IV. Coerência e Coesão no Processamento do Texto",
+    "explicacao": "Identificar a tese de um texto.",
+    "bncc": "",
+    "fonte": "SAEB - Matriz de Referência da 3ª série do Ensino Médio",
+    "matriz": "saeb"
+  },
+  {
+    "codigo": "D8",
+    "texto": "Estabelecer relação entre a tese e os argumentos oferecidos para sustentá-la.",
+    "disciplina": "Língua Portuguesa",
+    "topico": "IV. Coerência e Coesão no Processamento do Texto",
+    "explicacao": "Estabelecer relação entre a tese e os argumentos oferecidos para sustentá-la.",
+    "bncc": "",
+    "fonte": "SAEB - Matriz de Referência da 3ª série do Ensino Médio",
+    "matriz": "saeb"
+  },
+  {
+    "codigo": "D9",
+    "texto": "Diferenciar as partes principais das secundárias em um texto.",
+    "disciplina": "Língua Portuguesa",
+    "topico": "IV. Coerência e Coesão no Processamento do Texto",
+    "explicacao": "Diferenciar as partes principais das secundárias em um texto.",
+    "bncc": "",
+    "fonte": "SAEB - Matriz de Referência da 3ª série do Ensino Médio",
+    "matriz": "saeb"
+  },
+  {
+    "codigo": "D10",
+    "texto": "Identificar o conflito gerador do enredo e os elementos que constroem a narrativa.",
+    "disciplina": "Língua Portuguesa",
+    "topico": "IV. Coerência e Coesão no Processamento do Texto",
+    "explicacao": "Identificar o conflito gerador do enredo e os elementos que constroem a narrativa.",
+    "bncc": "",
+    "fonte": "SAEB - Matriz de Referência da 3ª série do Ensino Médio",
+    "matriz": "saeb"
+  },
+  {
+    "codigo": "D11",
+    "texto": "Estabelecer relação causa/consequência entre partes e elementos do texto.",
+    "disciplina": "Língua Portuguesa",
+    "topico": "IV. Coerência e Coesão no Processamento do Texto",
+    "explicacao": "Estabelecer relação causa/consequência entre partes e elementos do texto.",
+    "bncc": "",
+    "fonte": "SAEB - Matriz de Referência da 3ª série do Ensino Médio",
+    "matriz": "saeb"
+  },
+  {
+    "codigo": "D15",
+    "texto": "Estabelecer relações lógico-discursivas presentes no texto, marcadas por conjunções, advérbios etc.",
+    "disciplina": "Língua Portuguesa",
+    "topico": "IV. Coerência e Coesão no Processamento do Texto",
+    "explicacao": "Estabelecer relações lógico-discursivas presentes no texto, marcadas por conjunções, advérbios etc.",
+    "bncc": "",
+    "fonte": "SAEB - Matriz de Referência da 3ª série do Ensino Médio",
+    "matriz": "saeb"
+  },
+  {
+    "codigo": "D16",
+    "texto": "Identificar efeitos de ironia ou humor em textos variados.",
+    "disciplina": "Língua Portuguesa",
+    "topico": "V. Relações entre Recursos Expressivos e Efeitos de Sentido",
+    "explicacao": "Identificar efeitos de ironia ou humor em textos variados.",
+    "bncc": "",
+    "fonte": "SAEB - Matriz de Referência da 3ª série do Ensino Médio",
+    "matriz": "saeb"
+  },
+  {
+    "codigo": "D17",
+    "texto": "Reconhecer o efeito de sentido decorrente do uso da pontuação e de outras notações.",
+    "disciplina": "Língua Portuguesa",
+    "topico": "V. Relações entre Recursos Expressivos e Efeitos de Sentido",
+    "explicacao": "Reconhecer o efeito de sentido decorrente do uso da pontuação e de outras notações.",
+    "bncc": "",
+    "fonte": "SAEB - Matriz de Referência da 3ª série do Ensino Médio",
+    "matriz": "saeb"
+  },
+  {
+    "codigo": "D18",
+    "texto": "Reconhecer o efeito de sentido decorrente da escolha de uma determinada palavra ou expressão.",
+    "disciplina": "Língua Portuguesa",
+    "topico": "V. Relações entre Recursos Expressivos e Efeitos de Sentido",
+    "explicacao": "Reconhecer o efeito de sentido decorrente da escolha de uma determinada palavra ou expressão.",
+    "bncc": "",
+    "fonte": "SAEB - Matriz de Referência da 3ª série do Ensino Médio",
+    "matriz": "saeb"
+  },
+  {
+    "codigo": "D19",
+    "texto": "Reconhecer o efeito de sentido decorrente da exploração de recursos ortográficos e/ou morfossintáticos.",
+    "disciplina": "Língua Portuguesa",
+    "topico": "V. Relações entre Recursos Expressivos e Efeitos de Sentido",
+    "explicacao": "Reconhecer o efeito de sentido decorrente da exploração de recursos ortográficos e/ou morfossintáticos.",
+    "bncc": "",
+    "fonte": "SAEB - Matriz de Referência da 3ª série do Ensino Médio",
+    "matriz": "saeb"
+  },
+  {
+    "codigo": "D13",
+    "texto": "Identificar as marcas linguísticas que evidenciam o locutor e o interlocutor de um texto.",
+    "disciplina": "Língua Portuguesa",
+    "topico": "VI. Variação Linguística",
+    "explicacao": "Identificar as marcas linguísticas que evidenciam o locutor e o interlocutor de um texto.",
+    "bncc": "",
+    "fonte": "SAEB - Matriz de Referência da 3ª série do Ensino Médio",
+    "matriz": "saeb"
+  }
+].map(d=>({...d,erros:comum.erros,estrategias:comum.estrategias,intervencao:comum.estrategias}));
+ function matrixKey(matrix){return matrix||window.VETOR?.state?.assessment?.descriptorMatrix||'saepe';}
+ function matrixList(disc,matrix){return disciplineKey(disc)==='Língua Portuguesa'&&matrixKey(matrix)==='saeb'?saebLP:(data[disciplineKey(disc)]||[]);}
  window.Descritores={
-  list(disc){if(disc==='todos')return [...data['Língua Portuguesa'],...data['Matemática']];return data[disciplineKey(disc)]||[];},
-  get(disc,codigo){return (data[disciplineKey(disc)]||[]).find(d=>d.codigo===codeKey(codigo));},
-  validCodes(disc){return new Set((data[disciplineKey(disc)]||[]).map(d=>d.codigo));}
+  list(disc,matrix){if(disc==='todos')return [...matrixList('Língua Portuguesa',matrix),...data['Matemática']];return matrixList(disc,matrix);},
+  get(disc,codigo,matrix){return matrixList(disc,matrix).find(d=>d.codigo===codeKey(codigo));},
+  validCodes(disc,matrix){return new Set(matrixList(disc,matrix).map(d=>d.codigo));}
  };
 })();

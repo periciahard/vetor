@@ -83,8 +83,23 @@ function turmaOk(u,turma){
  return !!y && u.anos.includes(y);
 }
 function assessmentOk(u,a){return !!u && (u.all || (turmaOk(u,a?.turma) && disciplineOk(u,a?.discipline)));}
-function lock(){document.body.classList.remove('role-admin','role-coord','role-coordenacao','role-prof','role-professor'); document.body.classList.add('auth-locked'); if($('#loginScreen')) $('#loginScreen').style.display='flex';}
+function renderIdentity(u){
+ const name=u?.nome||'';
+ const role=u?(u.role==='admin'?'Administrador':u.role==='coord'?'Coordenação':'Professor'):'';
+ const initials=name.trim().split(/\s+/).filter(Boolean).slice(0,2).map(part=>part[0]).join('').toUpperCase();
+ $$('.vetor-user-name').forEach(el=>el.textContent=name);
+ $$('.vetor-user-role').forEach(el=>el.textContent=role);
+ $$('.vetor-user-avatar').forEach(el=>el.textContent=initials);
+ $$('.vetor-user-box').forEach(el=>el.setAttribute('aria-label',u?name+' — '+role:'Usuário não autenticado'));
+ if(!u){
+  ['#authUserBadge','#sidebarUserBadge','#userProfilePage'].forEach(selector=>{
+   const el=$(selector);if(el)el.textContent='';
+  });
+ }
+}
+function lock(){renderIdentity(null);document.body.classList.remove('role-admin','role-coord','role-coordenacao','role-prof','role-professor'); document.body.classList.add('auth-locked'); if($('#loginScreen')) $('#loginScreen').style.display='flex';}
 function unlock(u){
+ renderIdentity(u);
  document.body.classList.remove('auth-locked');
  document.body.classList.remove('role-admin','role-coord','role-coordenacao','role-prof','role-professor');
  document.body.classList.add('role-'+(u.role||'prof'));
@@ -362,6 +377,7 @@ function bindAdminUI(){
 
 function applyPermissions(){
  if(!user())return;
+ renderIdentity(user());
  patchApp(); permissionsNav(); filterTurmaSelects(); filterBankUI(); applySystemVisibility(); renderUsersAdmin(); if(user()?.role==='admin') setTimeout(adminLoadProfiles,300);
 }
 

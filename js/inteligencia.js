@@ -50,10 +50,11 @@
       const profile=cloud.profile;
       try{
 
+        const readAll=async factory=>{const data=[];for(let offset=0;;offset+=500){const page=await factory().order('id').range(offset,offset+499);if(page.error)throw page.error;data.push(...(page.data||[]));if((page.data||[]).length<500)break;}return {data};};
         const [avRes,rowRes,turmaRes]=await Promise.all([
-          c.from('avaliacoes').select('id,titulo,nome,tipo,disciplina,turma_id,professor_id,data_aplicacao,data_avaliacao,criado_em').order('data_aplicacao',{ascending:true}),
-          c.from('resultados_alunos').select('id,avaliacao_id,aluno_id,aluno_nome,percentual,acertos,total,descritores_criticos').order('aluno_nome',{ascending:true}),
-          c.from('turmas').select('id,nome,serie').order('nome',{ascending:true})
+          readAll(()=>c.from('avaliacoes').select('id,titulo,nome,tipo,disciplina,turma_id,professor_id,data_aplicacao,data_avaliacao,criado_em,questoes_json,descritores_json,gabarito_json')),
+          readAll(()=>c.from('resultados_alunos').select('id,avaliacao_id,aluno_id,aluno_nome,percentual,acertos,total,descritores_criticos,respostas_json')),
+          readAll(()=>c.from('turmas').select('id,nome,serie'))
         ]);
         if(avRes.error)throw avRes.error;
         if(rowRes.error)throw rowRes.error;
@@ -100,14 +101,46 @@
       }).sort((a,b)=>a.percentual-b.percentual);
     },
     evolucaoTurmas(){
-      const groups=by(this.avs,av=>(av.turma_id||'')+'|'+(av.disciplina||''));
-      return Object.values(groups).map(list=>{
-        list=[...list].sort(sortDate);
-        const pontos=list.map(av=>({av,media:this.avgFor(av.id)})).filter(p=>this.resultsFor(p.av.id).length);
-        if(!pontos.length)return null;
-        const first=pontos[0], last=pontos[pontos.length-1];
-        return {turma:this.turmaName(last.av.turma_id), disciplina:this.discName(last.av.disciplina), n:pontos.length, first:first.media, last:last.media, delta:last.media-first.media, pontos};
-      }).filter(Boolean).sort((a,b)=>a.delta-b.delta);
+      const app=A();
+      const clean=t=>app?.cleanTurmaName?.(t)||String(t||'').trim();
+      const records=new Map();
+      const add=record=>{
+        if(!record.questions?.length||!record.students?.length)return;
+        const turma=clean(record.turma), disciplina=/mat/i.test(record.discipline||'')?'Matemática':'Língua Portuguesa';
+        const title=norm(record.title||'Avaliação');
+        const signature=[turma,disciplina,title,record.date||''].map(x=>x.toLowerCase()).join('|');
+        const result=window.Diagnostico?.compute?.(record);
+        if(!result)return;
+        const valid=(result.students||[]).filter(s=>s.validForStats!==false&&s.level!=='Faltoso'&&s.level!=='Avaliação incompleta'&&Number.isFinite(Number(s.percent)));
+        if(!valid.length)return;
+        const point={av:record,turma,disciplina,title,date:record.date||'',media:avg(valid.map(s=>Number(s.percent))),valid:valid.length};
+        records.set(signature,point);
+      };
+      this.avs.forEach(av=>{
+        const descriptors=Array.isArray(av.descritores_json)?av.descritores_json:(av.descritores_json?.codes||[]);
+        add({id:'cloud-'+av.id,cloud_avaliacao_id:av.id,title:av.titulo||av.nome,turma:this.turmaName(av.turma_id),
+          discipline:this.discName(av.disciplina),date:dateOf(av),tipo:av.tipo,
+          descriptorMatrix:av.descritores_json?.matrix||'saepe',questions:av.questoes_json||[],descriptors,
+          key:av.gabarito_json||[],students:this.resultsFor(av.id).map(r=>({name:r.aluno_nome,answers:r.respostas_json||[]}))});
+      });
+      const local=window.AuthSupabase?.user?.()&&window.AuthSupabase?.filteredAssessments
+        ?window.AuthSupabase.filteredAssessments():(app?.state?.assessments||[]);
+      const linked=new Set(local.filter(a=>a.cloud_avaliacao_id&&a.questions?.length&&a.students?.length).map(a=>String(a.cloud_avaliacao_id)));
+      // Prefer complete local copies, preserving cloud data when a local draft is empty.
+      for(const [signature,point] of records){
+        if(point.av.cloud_avaliacao_id&&linked.has(String(point.av.cloud_avaliacao_id)))records.delete(signature);
+      }
+      local.forEach(add);
+      const turmaFilter=clean(document.querySelector('#evoTurma')?.value||'');
+      const discFilter=document.querySelector('#evoDisc')?.value||'';
+      const points=[...records.values()].filter(p=>(!turmaFilter||p.turma===turmaFilter)&&(!discFilter||p.disciplina===discFilter));
+      const groups=by(points,p=>[p.turma,p.disciplina,p.date.slice(0,4)].join('|'));
+      return Object.values(groups).map(pontos=>{
+        pontos.sort((a,b)=>a.date.localeCompare(b.date)||a.title.localeCompare(b.title,'pt-BR',{numeric:true}));
+        const first=pontos[0],last=pontos[pontos.length-1];
+        return {turma:last.turma,disciplina:last.disciplina,n:pontos.length,first:first.media,last:last.media,
+          delta:pontos.length>1?last.media-first.media:null,firstTitle:first.title,lastTitle:last.title,pontos};
+      }).sort((a,b)=>a.turma.localeCompare(b.turma,'pt-BR',{numeric:true})||a.disciplina.localeCompare(b.disciplina,'pt-BR'));
     },
     metas(){
       return this.rankingTurmas().map(t=>{
@@ -143,7 +176,7 @@
     renderMain(){
       const box=document.querySelector('#vetorIntelligenceDashboard'); if(!box)return;
       const turmas=this.metas().slice(0,8); const desc=this.rankingDescritores().slice(0,8); const alunos=this.alunosPrioritarios().slice(0,10); const evo=this.evolucaoTurmas();
-      box.innerHTML=`${this.cardsResumo()}<div class="grid2"><div class="panel"><h3>Turmas prioritárias e metas</h3><div class="preview-table"><div class="preview-row"><span>Turma</span><span>Média</span><span>Meta</span><span>Prioridade</span></div>${turmas.map(t=>`<div class="preview-row"><span><b>${safe(t.turma)}</b><br><small>${safe(t.disciplina)}</small></span><span>${pct(t.media)}%</span><span>${pct(t.alvo)}%</span><span>${safe(t.prioridade)}</span></div>`).join('')||'<p class="hint">Sem dados.</p>'}</div></div><div class="panel"><h3>Descritores críticos</h3><div class="preview-table"><div class="preview-row"><span>Descritor</span><span>Erros</span></div>${desc.map(d=>`<div class="preview-row"><span>${safe(d.descritor)}</span><span><b>${d.erros}</b></span></div>`).join('')||'<p class="hint">Sem dados.</p>'}</div></div></div><div class="grid2"><div class="panel"><h3>Alunos prioritários</h3><div class="preview-table"><div class="preview-row"><span>Aluno</span><span>Turma</span><span>%</span></div>${alunos.map(a=>`<div class="preview-row"><span>${safe(a.nome)}</span><span>${safe(a.turma)}</span><span>${pct(a.percentual)}%</span></div>`).join('')||'<p class="hint">Sem alunos abaixo de 50% nas últimas avaliações.</p>'}</div></div><div class="panel"><h3>Evolução das turmas</h3><div class="preview-table"><div class="preview-row"><span>Turma</span><span>Inicial</span><span>Atual</span><span>Δ</span></div>${evo.map(e=>`<div class="preview-row"><span>${safe(e.turma)}<br><small>${safe(e.disciplina)}</small></span><span>${pct(e.first)}%</span><span>${pct(e.last)}%</span><span class="${e.delta>=0?'oktext':'badtext'}">${e.delta>=0?'+':''}${pct(e.delta)} p.p.</span></div>`).join('')||'<p class="hint">São necessárias pelo menos duas avaliações da mesma turma/disciplina.</p>'}</div></div></div>`;
+      box.innerHTML=`${this.cardsResumo()}<div class="grid2"><div class="panel"><h3>Turmas prioritárias e metas</h3><div class="preview-table"><div class="preview-row"><span>Turma</span><span>Média</span><span>Meta</span><span>Prioridade</span></div>${turmas.map(t=>`<div class="preview-row"><span><b>${safe(t.turma)}</b><br><small>${safe(t.disciplina)}</small></span><span>${pct(t.media)}%</span><span>${pct(t.alvo)}%</span><span>${safe(t.prioridade)}</span></div>`).join('')||'<p class="hint">Sem dados.</p>'}</div></div><div class="panel"><h3>Descritores críticos</h3><div class="preview-table"><div class="preview-row"><span>Descritor</span><span>Erros</span></div>${desc.map(d=>`<div class="preview-row"><span>${safe(d.descritor)}</span><span><b>${d.erros}</b></span></div>`).join('')||'<p class="hint">Sem dados.</p>'}</div></div></div><div class="grid2"><div class="panel"><h3>Alunos prioritários</h3><div class="preview-table"><div class="preview-row"><span>Aluno</span><span>Turma</span><span>%</span></div>${alunos.map(a=>`<div class="preview-row"><span>${safe(a.nome)}</span><span>${safe(a.turma)}</span><span>${pct(a.percentual)}%</span></div>`).join('')||'<p class="hint">Sem alunos abaixo de 50% nas últimas avaliações.</p>'}</div></div><div class="panel"><h3>Evolução das turmas</h3><div class="preview-table"><div class="preview-row"><span>Turma</span><span>Inicial</span><span>Atual</span><span>Δ</span></div>${evo.map(e=>`<div class="preview-row"><span>${safe(e.turma)}<br><small>${safe(e.disciplina)}</small></span><span>${pct(e.first)}%<br><small>${safe(e.firstTitle)}</small></span><span>${pct(e.last)}%<br><small>${safe(e.lastTitle)}</small></span><span class="${e.delta===null?'hint':e.delta>=0?'oktext':'badtext'}">${e.delta===null?'Aguardando segunda avaliação':(e.delta>=0?'+':'')+pct(e.delta)+' p.p.'}</span></div>`).join('')||'<p class="hint">São necessárias pelo menos duas avaliações da mesma turma/disciplina.</p>'}</div></div></div>`;
       const txt=document.querySelector('#vetorPlanoTexto'); if(txt)txt.value=this.planoIntervencao();
     },
     renderCoord(){

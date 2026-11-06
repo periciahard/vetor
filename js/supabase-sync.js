@@ -117,6 +117,7 @@
       this.renderUserBox();
       this.setStatus(`Conectado como ${profile.nome} (${profile.perfil}).`,'ok');
       await this.listAssessments(false);
+      document.dispatchEvent(new Event('vetor:cloud-ready'));
     },
     async loadTeacherProfiles(){
       this.teacherProfiles=[];

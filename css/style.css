@@ -2442,3 +2442,14 @@ body.dark-theme .password-form label{color:#eef4ff}body.dark-theme .checkbox-lin
  #assessmentHistory .assessment-history-selected{flex-direction:column;align-items:stretch}
  #assessmentHistory .assessment-actions{width:100%}
 }
+
+/* Group same-name assessments within each subject and year. */
+#diagnosticCompareOptions .compare-assessment-group{margin:12px 0 16px;min-width:0}
+#diagnosticCompareOptions .compare-assessment-group-heading{
+ display:flex;align-items:baseline;justify-content:space-between;gap:8px;
+ margin:0 0 8px;padding:0 0 6px;border-bottom:1px solid var(--line);
+ font-size:13px;line-height:1.4;letter-spacing:0
+}
+#diagnosticCompareOptions .compare-assessment-group-heading span{min-width:0;overflow-wrap:anywhere}
+#diagnosticCompareOptions .compare-assessment-group-heading small{font-size:10px;color:var(--muted);font-weight:500;white-space:nowrap}
+#diagnosticCompareOptions .compare-assessment-group-items{display:grid;grid-template-columns:minmax(0,1fr);gap:7px}
